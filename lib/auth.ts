@@ -48,6 +48,9 @@ async function createUserProfile(user: User, provider: string) {
       displayName: user.displayName,
       photoURL: user.photoURL,
       provider,
+      onboardingCompleted: false,
+      selectedAIProvider: null,
+      resumeId: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
