@@ -30,11 +30,9 @@ export default function SignInPage() {
 
     try {
       await signIn(email, password);
-      router.push("/dashboard");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       setError(getFirebaseErrorMessage(firebaseError.code || ""));
-    } finally {
       setLoading(false);
     }
   }
@@ -45,11 +43,9 @@ export default function SignInPage() {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       setError(getFirebaseErrorMessage(firebaseError.code || ""));
-    } finally {
       setLoading(false);
     }
   }

@@ -6,6 +6,8 @@ import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { ACTIVE_STATUSES } from "@/types/application";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   const session = request.cookies.get("__session")?.value;
   if (!session) {

@@ -46,11 +46,9 @@ export default function SignUpPage() {
 
     try {
       await signUp(email, password, name.trim());
-      router.push("/dashboard");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       setError(getFirebaseErrorMessage(firebaseError.code || ""));
-    } finally {
       setLoading(false);
     }
   }
@@ -61,11 +59,9 @@ export default function SignUpPage() {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       setError(getFirebaseErrorMessage(firebaseError.code || ""));
-    } finally {
       setLoading(false);
     }
   }

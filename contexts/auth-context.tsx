@@ -20,15 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      setLoading(false);
-
       if (user) {
         const token = await user.getIdToken();
         document.cookie = `__session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       } else {
         document.cookie = "__session=; path=/; max-age=0";
       }
+      setUser(user);
+      setLoading(false);
     });
     return unsubscribe;
   }, []);

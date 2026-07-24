@@ -40,3 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *-sa-key.json
+cloudbuild.yaml
