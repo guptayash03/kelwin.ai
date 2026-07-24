@@ -26,6 +26,20 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // Applications collection: users can read/create/update their own applications
+    match /applications/{applicationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Application queue: read-only for users (created/updated by API routes and Cloud Run worker)
+    match /applicationQueue/{queueItemId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
     // Deny all other access by default
     match /{document=**} {
       allow read, write: if false;

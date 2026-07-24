@@ -40,7 +40,7 @@ export function DashboardHeader() {
 
   async function handleSignOut() {
     await signOut();
-    router.push("/sign-in");
+    window.location.href = "/sign-in";
   }
 
   return (
@@ -58,7 +58,7 @@ export function DashboardHeader() {
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
-            <DropdownMenuItem onSelect={handleSignOut}>
+            <DropdownMenuItem onClick={handleSignOut}>
               <LogOut />
               Sign out
             </DropdownMenuItem>

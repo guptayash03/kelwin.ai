@@ -9,10 +9,12 @@ import {
   MapPin,
   ExternalLink,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface JobCardProps {
   job: NormalizedJob;
   onSave: (jobId: string) => void;
+  onApply: (job: NormalizedJob) => void;
 }
 
 function getScoreColor(score: number) {
@@ -22,11 +24,21 @@ function getScoreColor(score: number) {
   return { text: "text-red-600", bg: "bg-red-500", ring: "ring-red-200" };
 }
 
-export function JobCard({ job, onSave }: JobCardProps) {
+export function JobCard({ job, onSave, onApply }: JobCardProps) {
+  const router = useRouter();
   const scoreColor = getScoreColor(job.matchScore);
 
+  function handleClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a")) return;
+    router.push(`/dashboard/jobs/${job.id}`);
+  }
+
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:bg-muted/30">
+    <div
+      onClick={handleClick}
+      className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 transition-colors hover:bg-muted/30 cursor-pointer"
+    >
       {/* Company Logo */}
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-white flex items-center justify-center">
         <img
@@ -99,12 +111,10 @@ export function JobCard({ job, onSave }: JobCardProps) {
             <Bookmark className="h-4 w-4" />
           )}
         </Button>
-        <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
-          <Button variant="default" size="xs">
-            <ExternalLink className="h-3 w-3" />
-            Apply
-          </Button>
-        </a>
+        <Button variant="default" size="xs" onClick={() => onApply(job)}>
+          <ExternalLink className="h-3 w-3" />
+          Apply
+        </Button>
       </div>
     </div>
   );

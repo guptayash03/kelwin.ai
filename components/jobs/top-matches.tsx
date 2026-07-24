@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { NormalizedJob } from "@/types/job";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TopMatchesProps {
   jobs: NormalizedJob[];
-  onApply: (url: string) => void;
+  onApply: (job: NormalizedJob) => void;
 }
 
 const CARD_GRADIENTS = [
@@ -24,6 +25,7 @@ const CARD_GRADIENTS = [
 const CARDS_PER_PAGE = 4;
 
 export function TopMatches({ jobs, onApply }: TopMatchesProps) {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
 
   if (jobs.length === 0) return null;
@@ -73,7 +75,11 @@ export function TopMatches({ jobs, onApply }: TopMatchesProps) {
           return (
             <div
               key={job.id}
-              className={`relative rounded-xl bg-gradient-to-br ${CARD_GRADIENTS[gradientIndex % CARD_GRADIENTS.length]} p-5 text-white overflow-hidden flex flex-col justify-between min-h-[160px]`}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button")) return;
+                router.push(`/dashboard/jobs/${job.id}`);
+              }}
+              className={`relative rounded-xl bg-gradient-to-br ${CARD_GRADIENTS[gradientIndex % CARD_GRADIENTS.length]} p-5 text-white overflow-hidden flex flex-col justify-between min-h-[160px] cursor-pointer`}
             >
               {/* Match percentage circle */}
               <div className="absolute top-4 right-4">
@@ -142,7 +148,7 @@ export function TopMatches({ jobs, onApply }: TopMatchesProps) {
                   variant="secondary"
                   size="xs"
                   className="bg-white text-emerald-800 hover:bg-white/90 border-0 text-xs font-medium"
-                  onClick={() => onApply(job.applyUrl)}
+                  onClick={() => onApply(job)}
                 >
                   Apply
                 </Button>
