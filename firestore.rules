@@ -32,6 +32,12 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null && resource.data.userId == request.auth.uid;
       allow delete: if false;
+
+      // Activity logs written by the worker, read-only for the application owner
+      match /logs/{logId} {
+        allow read: if request.auth != null && get(/databases/$(database)/documents/applications/$(applicationId)).data.userId == request.auth.uid;
+        allow write: if false;
+      }
     }
 
     // Application queue: read-only for users (created/updated by API routes and Cloud Run worker)

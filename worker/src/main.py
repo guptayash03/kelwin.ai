@@ -42,6 +42,14 @@ async def task_analysis(request: Request):
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
 
+    from .firebase_client import get_application, update_application_status, add_activity_log
+
+    # Guard: skip if already terminal
+    app_doc = get_application(application_id)
+    if app_doc.get("status") in ("failed", "applied"):
+        logger.info(f"Skipping analysis for {application_id}: already {app_doc['status']}")
+        return {"status": "skipped"}
+
     logger.info(f"Starting analysis for application {application_id}")
 
     try:
@@ -51,15 +59,15 @@ async def task_analysis(request: Request):
         return {"status": "completed"}
     except Exception as e:
         logger.error(f"Analysis failed for {application_id}: {e}")
-        from .firebase_client import update_application_status
-
+        add_activity_log(application_id, f"Analysis failed: {e}", "error")
         update_application_status(
             application_id,
             "failed",
             failureReason=str(e),
             currentTaskType="analysis",
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return 200 so Cloud Tasks does NOT retry
+        return {"status": "failed", "error": str(e)}
 
 
 @app.post("/tasks/submission")
@@ -74,6 +82,14 @@ async def task_submission(request: Request):
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
 
+    from .firebase_client import get_application, update_application_status, add_activity_log
+
+    # Guard: skip if already terminal
+    app_doc = get_application(application_id)
+    if app_doc.get("status") in ("failed", "applied"):
+        logger.info(f"Skipping submission for {application_id}: already {app_doc['status']}")
+        return {"status": "skipped"}
+
     logger.info(f"Starting submission for application {application_id}")
 
     try:
@@ -83,12 +99,12 @@ async def task_submission(request: Request):
         return {"status": "completed"}
     except Exception as e:
         logger.error(f"Submission failed for {application_id}: {e}")
-        from .firebase_client import update_application_status
-
+        add_activity_log(application_id, f"Submission failed: {e}", "error")
         update_application_status(
             application_id,
             "failed",
             failureReason=str(e),
             currentTaskType="submission",
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return 200 so Cloud Tasks does NOT retry
+        return {"status": "failed", "error": str(e)}

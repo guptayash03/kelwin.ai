@@ -4,6 +4,7 @@ from ..firebase_client import (
     update_application_status,
     get_application,
     get_user_profile,
+    add_activity_log,
 )
 from ..browser.session import create_browser
 from ..browser.platform_detect import detect_platform
@@ -104,19 +105,25 @@ async def handle_analysis(application_id: str, user_id: str):
     """Phase 1: Use browser-use Agent to analyze the application form."""
     from browser_use import Agent
 
+    add_activity_log(application_id, "Starting application analysis", "info", "detecting_platform")
+
     update_application_status(application_id, "detecting_platform")
 
     application = get_application(application_id)
     job_url = application["jobUrl"]
 
     platform = detect_platform(job_url)
+    add_activity_log(application_id, f"Detected platform: {platform}", "action", "detecting_platform")
     logger.info(f"Detected platform: {platform} for {job_url}")
 
     update_application_status(application_id, "analyzing_application")
+    add_activity_log(application_id, f"Navigating to {job_url}", "action", "analyzing_application")
 
     llm = get_llm(user_id)
 
     task_with_url = f"Navigate to {job_url} and then:\n\n{ANALYSIS_TASK}"
+
+    add_activity_log(application_id, "Launching browser to analyze form fields", "action", "analyzing_application")
 
     async with create_browser() as browser:
         agent = Agent(
@@ -129,8 +136,11 @@ async def handle_analysis(application_id: str, user_id: str):
 
         result = await agent.run()
 
+    add_activity_log(application_id, "Browser agent completed form analysis", "info", "analyzing_application")
+
     raw_output = result.final_result()
     if not raw_output:
+        add_activity_log(application_id, "Agent failed to extract form fields", "error", "analyzing_application")
         raise Exception("Agent failed to extract form fields")
 
     try:
@@ -139,13 +149,22 @@ async def handle_analysis(application_id: str, user_id: str):
             clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
         extracted = json.loads(clean)
     except json.JSONDecodeError as e:
+        add_activity_log(application_id, f"Failed to parse form structure: {e}", "error", "analyzing_application")
         logger.error(f"Failed to parse agent output: {raw_output[:500]}")
         raise Exception(f"Failed to parse form analysis: {e}")
 
     detected_fields = extracted.get("detected_fields", [])
     screening_questions = extracted.get("screening_questions", [])
 
+    add_activity_log(
+        application_id,
+        f"Found {len(detected_fields)} form fields and {len(screening_questions)} screening questions",
+        "success",
+        "analyzing_application",
+    )
+
     update_application_status(application_id, "comparing_profile")
+    add_activity_log(application_id, "Comparing form fields with your profile", "action", "comparing_profile")
 
     profile = get_user_profile(user_id)
     parsed_data = profile["parsedData"]
@@ -153,6 +172,12 @@ async def handle_analysis(application_id: str, user_id: str):
     missing_fields = compare_profile_to_fields(detected_fields, parsed_data)
 
     if missing_fields:
+        add_activity_log(
+            application_id,
+            f"Missing profile info: {', '.join(missing_fields)}",
+            "warning",
+            "comparing_profile",
+        )
         update_application_status(
             application_id,
             "missing_profile_info",
@@ -164,6 +189,7 @@ async def handle_analysis(application_id: str, user_id: str):
         )
         logger.info(f"Application {application_id}: missing fields: {missing_fields}")
     else:
+        add_activity_log(application_id, "All required fields matched to profile", "success", "comparing_profile")
         update_application_status(
             application_id,
             "ready_to_apply",
@@ -173,6 +199,7 @@ async def handle_analysis(application_id: str, user_id: str):
             missingFields=[],
             currentTaskType="submission",
         )
+        add_activity_log(application_id, "Ready to apply — starting submission phase", "info", "ready_to_apply")
         logger.info(f"Application {application_id}: ready to apply, enqueueing submission")
         _enqueue_submission(application_id, user_id)
 

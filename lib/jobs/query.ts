@@ -22,7 +22,6 @@ export function buildJobQuery(
 ): Query<DocumentData> {
   const constraints: QueryConstraint[] = [
     where("status", "==", "active"),
-    where("_countries", "array-contains", "india"),
   ];
 
   if (filters.experienceLevel) {
@@ -31,10 +30,6 @@ export function buildJobQuery(
 
   if (filters.workArrangement) {
     constraints.push(where("_workArrangement", "==", filters.workArrangement.toLowerCase()));
-  }
-
-  if (filters.employmentType) {
-    constraints.push(where("_employmentTypes", "array-contains", filters.employmentType.toLowerCase()));
   }
 
   if (filters.source) {
@@ -56,6 +51,11 @@ export function applyClientFilters(
   filters: JobFilters
 ): Array<{ data: DocumentData; id: string }> {
   return jobs.filter(({ data }) => {
+    if (filters.employmentType) {
+      const types = (data._employmentTypes as string[]) || [];
+      if (!types.includes(filters.employmentType.toLowerCase())) return false;
+    }
+
     if (filters.salaryMin !== undefined && filters.salaryMin !== null) {
       if (!data.salaryMin || data.salaryMin < filters.salaryMin) return false;
     }
@@ -71,8 +71,9 @@ export function applyClientFilters(
 
     if (filters.keyword) {
       const title = (data.title as string || "").toLowerCase();
+      const org = (data.organization as string || "").toLowerCase();
       const kw = filters.keyword.toLowerCase();
-      if (!title.includes(kw)) return false;
+      if (!title.includes(kw) && !org.includes(kw)) return false;
     }
 
     return true;

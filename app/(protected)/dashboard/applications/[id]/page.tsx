@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useApplication } from "@/hooks/use-application";
+import { useApplicationLogs } from "@/hooks/use-application-logs";
 import { ApplicationTimeline } from "@/components/applications/application-timeline";
+import { ActivityLog } from "@/components/applications/activity-log";
 import { MissingFieldsDialog } from "@/components/applications/missing-fields-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,7 @@ export default function ApplicationDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { application, loading, error } = useApplication(params.id);
+  const logs = useApplicationLogs(params.id);
   const [missingFieldsOpen, setMissingFieldsOpen] = useState(false);
 
   async function handleRetry() {
@@ -168,11 +171,11 @@ export default function ApplicationDetailPage() {
         </div>
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Timeline */}
-        <div className="lg:col-span-2">
-          <div className="rounded-xl border border-border bg-card p-6">
+      {/* Progress + Activity Log side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        {/* Progress - 30% */}
+        <div className="lg:col-span-3">
+          <div className="rounded-xl border border-border bg-card p-6 h-full">
             <h2 className="text-base font-semibold text-foreground mb-4">
               Progress
             </h2>
@@ -181,63 +184,50 @@ export default function ApplicationDetailPage() {
               failureReason={application.failureReason}
               missingFields={application.missingFields}
             />
+
+            {/* Missing Fields Alert */}
+            {application.status === "missing_profile_info" &&
+              application.missingFields.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border space-y-2">
+                  <p className="text-xs font-medium text-amber-700">Missing Information:</p>
+                  <ul className="space-y-1">
+                    {application.missingFields.map((field) => (
+                      <li
+                        key={field}
+                        className="text-xs text-amber-700 flex items-center gap-1"
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                        {field}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => setMissingFieldsOpen(true)}
+                  >
+                    <FileQuestion className="h-3.5 w-3.5" />
+                    Complete Missing Info
+                  </Button>
+                </div>
+              )}
+
+            {/* Confirmation */}
+            {application.confirmationMessage && (
+              <div className="mt-4 pt-4 border-t border-green-200">
+                <p className="text-xs font-medium text-green-700 mb-1">Confirmation</p>
+                <p className="text-xs text-green-600">
+                  {application.confirmationMessage}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          {/* Details */}
-          <div className="rounded-xl border border-border bg-card p-6 space-y-3">
-            <h2 className="text-base font-semibold text-foreground">Details</h2>
-            <DetailRow label="Platform" value={application.platform} />
-            <DetailRow label="Status" value={application.status.replace(/_/g, " ")} />
-            <DetailRow label="Retry Count" value={String(application.retryCount)} />
-            {application.submittedAt != null && (
-              <DetailRow label="Submitted" value="Yes" />
-            )}
-          </div>
-
-          {/* Missing Fields Alert */}
-          {application.status === "missing_profile_info" &&
-            application.missingFields.length > 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 space-y-3">
-                <h2 className="text-base font-semibold text-amber-800">
-                  Missing Information
-                </h2>
-                <ul className="space-y-1">
-                  {application.missingFields.map((field) => (
-                    <li
-                      key={field}
-                      className="text-xs text-amber-700 flex items-center gap-1"
-                    >
-                      <AlertCircle className="h-3 w-3" />
-                      {field}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => setMissingFieldsOpen(true)}
-                >
-                  <FileQuestion className="h-3.5 w-3.5" />
-                  Complete Missing Info
-                </Button>
-              </div>
-            )}
-
-          {/* Confirmation */}
-          {application.confirmationMessage && (
-            <div className="rounded-xl border border-green-200 bg-green-50 p-6">
-              <h2 className="text-base font-semibold text-green-800 mb-2">
-                Confirmation
-              </h2>
-              <p className="text-xs text-green-700">
-                {application.confirmationMessage}
-              </p>
-            </div>
-          )}
+        {/* Activity Log - 70% */}
+        <div className="lg:col-span-7">
+          <ActivityLog logs={logs} status={application.status} />
         </div>
       </div>
 
@@ -257,13 +247,3 @@ export default function ApplicationDetailPage() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium text-foreground capitalize">
-        {value}
-      </span>
-    </div>
-  );
-}
