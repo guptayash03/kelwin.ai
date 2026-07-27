@@ -1,0 +1,12 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.31.1
+browser-use>=0.13.6
+playwright>=1.44.0
+firebase-admin>=6.5.0
+google-auth>=2.29.0
+google-cloud-tasks>=2.16.0
+google-genai>=1.60.0
+openai>=2.10.0
+anthropic>=0.70.0
+pydantic>=2.8.0
+httpx>=0.27.0

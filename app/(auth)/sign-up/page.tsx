@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { signUp, signInWithGoogle, getFirebaseErrorMessage } from "@/lib/auth";
 import { useAuth } from "@/contexts/auth-context";
 import { AuthPanel } from "@/components/auth-panel";
+import { ChevronRight } from "lucide-react";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -45,11 +46,9 @@ export default function SignUpPage() {
 
     try {
       await signUp(email, password, name.trim());
-      router.push("/dashboard");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       setError(getFirebaseErrorMessage(firebaseError.code || ""));
-    } finally {
       setLoading(false);
     }
   }
@@ -60,11 +59,9 @@ export default function SignUpPage() {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       setError(getFirebaseErrorMessage(firebaseError.code || ""));
-    } finally {
       setLoading(false);
     }
   }
@@ -83,17 +80,17 @@ export default function SignUpPage() {
 
       <div className="flex w-full lg:w-1/2 items-center justify-center bg-background px-6 py-12">
         <motion.div
-          className="w-full max-w-md space-y-8"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="w-full max-w-sm space-y-8"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
         >
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Create an account
+          <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Create your account
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              Get started with kelwin.ai today
+            <p className="mt-2 text-sm text-muted-foreground">
+              Start with 25 free applications. No card required.
             </p>
           </div>
 
@@ -111,7 +108,7 @@ export default function SignUpPage() {
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-3 rounded-lg border border-border px-4 py-3.5 text-sm font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
@@ -136,14 +133,19 @@ export default function SignUpPage() {
 
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">or</span>
+              <span className="text-xs text-muted-foreground">
+                Or continue with email
+              </span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium text-foreground">
-                  Full Name
+                <label
+                  htmlFor="name"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Full name
                 </label>
                 <input
                   id="name"
@@ -158,8 +160,11 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-foreground">
-                  Email
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Email address
                 </label>
                 <input
                   id="email"
@@ -175,7 +180,10 @@ export default function SignUpPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="password"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Password
                   </label>
                   <input
@@ -191,7 +199,10 @@ export default function SignUpPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Confirm
                   </label>
                   <input
@@ -210,15 +221,18 @@ export default function SignUpPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 transition-all"
+                className="flex w-full items-center justify-center gap-1 rounded-lg bg-foreground px-4 py-3.5 text-sm font-medium text-background hover:bg-foreground/90 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 transition-all"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                     Creating account...
                   </span>
                 ) : (
-                  "Create account"
+                  <>
+                    Continue
+                    <ChevronRight className="h-4 w-4" />
+                  </>
                 )}
               </button>
             </form>
@@ -226,8 +240,22 @@ export default function SignUpPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/sign-in" className="font-medium text-primary hover:underline">
+            <Link
+              href="/sign-in"
+              className="font-medium text-foreground hover:underline"
+            >
               Sign in
+            </Link>
+          </p>
+
+          <p className="text-center text-xs text-muted-foreground">
+            By continuing you agree to Kelwin&apos;s{" "}
+            <Link href="/terms" className="underline hover:text-foreground">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline hover:text-foreground">
+              Privacy Policy
             </Link>
           </p>
         </motion.div>

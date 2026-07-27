@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 interface JobListProps {
   jobs: NormalizedJob[];
   onSave: (jobId: string) => void;
+  onApply: (job: NormalizedJob) => void;
 }
 
 type SortBy = "matchScore" | "postedDate" | "company";
 
-export function JobList({ jobs, onSave }: JobListProps) {
+export function JobList({ jobs, onSave, onApply }: JobListProps) {
   const [sortBy, setSortBy] = useState<SortBy>("matchScore");
 
   const sorted = [...jobs].sort((a, b) => {
@@ -63,7 +64,7 @@ export function JobList({ jobs, onSave }: JobListProps) {
       </div>
       <div className="space-y-2">
         {sorted.map((job) => (
-          <JobCard key={job.id} job={job} onSave={onSave} />
+          <JobCard key={job.id} job={job} onSave={onSave} onApply={onApply} />
         ))}
       </div>
     </div>

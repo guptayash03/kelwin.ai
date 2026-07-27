@@ -24,6 +24,7 @@ import { JobList } from "@/components/jobs/job-list";
 import { JobCardSkeleton } from "@/components/jobs/job-card-skeleton";
 import { EmptyState } from "@/components/jobs/empty-state";
 import { Search, RefreshCw, AlertCircle } from "lucide-react";
+import { ApplyDialog } from "@/components/applications/apply-dialog";
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -37,6 +38,8 @@ export default function JobsPage() {
   const [cacheStatus, setCacheStatus] = useState<"fresh" | "stale" | "empty">(
     "empty"
   );
+  const [applyJob, setApplyJob] = useState<NormalizedJob | null>(null);
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
 
   const loadCachedJobs = useCallback(async () => {
     if (!user) return;
@@ -215,6 +218,11 @@ export default function JobsPage() {
     }
   }
 
+  function handleApply(job: NormalizedJob) {
+    setApplyJob(job);
+    setApplyDialogOpen(true);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -227,12 +235,7 @@ export default function JobsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Jobs</h2>
-          <p className="text-sm text-muted-foreground">
-            Discover software engineering jobs at top companies in India.
-          </p>
-        </div>
+        <h2 className="text-2xl font-semibold tracking-tight">Job Portals</h2>
         <div className="flex items-center gap-3">
           <Button
             variant="default"
@@ -287,9 +290,9 @@ export default function JobsPage() {
         <>
           <TopMatches
             jobs={jobs}
-            onApply={(url) => window.open(url, "_blank", "noopener,noreferrer")}
+            onApply={handleApply}
           />
-          <JobList jobs={jobs} onSave={handleSave} />
+          <JobList jobs={jobs} onSave={handleSave} onApply={handleApply} />
         </>
       )}
 
@@ -297,6 +300,13 @@ export default function JobsPage() {
       {!searching && jobs.length === 0 && !error && (
         <EmptyState />
       )}
+
+      {/* Apply Dialog */}
+      <ApplyDialog
+        job={applyJob}
+        open={applyDialogOpen}
+        onOpenChange={setApplyDialogOpen}
+      />
     </div>
   );
 }

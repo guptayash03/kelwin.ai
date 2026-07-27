@@ -37,7 +37,7 @@ export function NavUser() {
 
   async function handleSignOut() {
     await signOut();
-    router.push("/sign-in");
+    window.location.href = "/sign-in";
   }
 
   return (
@@ -92,20 +92,20 @@ export function NavUser() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem
-                onSelect={() => router.push("/dashboard/profile")}
+                onClick={() => router.push("/dashboard/profile")}
               >
                 <User />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => router.push("/dashboard/settings")}
+                onClick={() => router.push("/dashboard/settings")}
               >
                 <Settings />
                 Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleSignOut}>
+            <DropdownMenuItem onClick={handleSignOut}>
               <LogOut />
               Sign out
             </DropdownMenuItem>

@@ -21,6 +21,7 @@ import {
   FolderOpen,
   Award,
 } from "lucide-react";
+import { MissingFieldsBanner } from "@/components/applications/missing-fields-banner";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -90,6 +91,8 @@ export default function ProfilePage() {
           Your extracted resume information. Click edit to make changes.
         </p>
       </div>
+
+      <MissingFieldsBanner />
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0">
