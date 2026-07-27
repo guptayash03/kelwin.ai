@@ -12,9 +12,13 @@ import {
   doc,
   getDoc,
   updateDoc,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { NormalizedJob } from "@/types/job";
+import type { CentralJob } from "@/types/central-job";
+import type { ParsedResumeData } from "@/types/resume";
+import { scoreCentralJob } from "@/lib/jobs/match-score-adapter";
 import { ApplicationCard } from "@/components/applications/application-card";
 import { ApplyDialog } from "@/components/applications/apply-dialog";
 import { Button } from "@/components/ui/button";
@@ -29,9 +33,6 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  Bookmark,
-  BookmarkCheck,
-  MapPin,
   ChevronRight,
   KeyRound,
   Eye,
@@ -51,9 +52,9 @@ export default function DashboardPage() {
     failedCount,
   } = useApplications();
 
-  const [jobs, setJobs] = useState<NormalizedJob[]>([]);
+  const [jobs, setJobs] = useState<Array<{ job: CentralJob; matchScore: number }>>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
-  const [applyJob, setApplyJob] = useState<NormalizedJob | null>(null);
+  const [applyJob, setApplyJob] = useState<CentralJob | null>(null);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("gemini");
   const [savingProvider, setSavingProvider] = useState(false);
@@ -65,14 +66,34 @@ export default function DashboardPage() {
   const loadJobs = useCallback(async () => {
     if (!user) return;
     try {
-      const q = query(collection(db, "jobs"), where("userId", "==", user.uid));
+      // Load top jobs from centralJobs collection
+      const q = query(
+        collection(db, "centralJobs"),
+        where("status", "==", "active"),
+        where("_countries", "array-contains", "india"),
+        orderBy("lastSyncedAt", "desc"),
+        limit(12)
+      );
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
-        const cachedJobs: NormalizedJob[] = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<NormalizedJob, "id">),
-        }));
-        setJobs(cachedJobs.sort((a, b) => b.matchScore - a.matchScore));
+        // Load resume for scoring
+        let resume: ParsedResumeData | null = null;
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userData = userDoc.data();
+        if (userData?.resumeId) {
+          const resumeDoc = await getDoc(doc(db, "resumes", userData.resumeId));
+          const resumeData = resumeDoc.data();
+          if (resumeData?.parsedData) {
+            resume = resumeData.parsedData as ParsedResumeData;
+          }
+        }
+
+        const scored = snapshot.docs.map((d) => {
+          const job = { id: d.id, ...d.data() } as CentralJob;
+          const matchScore = resume ? scoreCentralJob(job, resume) : 0;
+          return { job, matchScore };
+        });
+        setJobs(scored.sort((a, b) => b.matchScore - a.matchScore));
       }
     } catch (err) {
       console.error("Failed to load jobs:", err);
@@ -135,7 +156,7 @@ export default function DashboardPage() {
     }
   }
 
-  function handleApply(job: NormalizedJob) {
+  function handleApply(job: CentralJob) {
     setApplyJob(job);
     setApplyDialogOpen(true);
   }
@@ -156,7 +177,6 @@ export default function DashboardPage() {
   }
 
   const topJobs = jobs.slice(0, 4);
-  const savedJobs = jobs.filter((j) => j.saved);
   const freeApplicationsLeft = Math.max(0, 10 - appliedCount);
 
   return (
@@ -302,8 +322,8 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {topJobs.map((job, i) => (
-              <TopJobCard key={job.id} job={job} index={i} onApply={handleApply} />
+            {topJobs.map(({ job, matchScore }, i) => (
+              <TopJobCard key={job.id} job={job} matchScore={matchScore} index={i} onApply={handleApply} />
             ))}
           </div>
         </div>
@@ -380,33 +400,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Saved Jobs */}
-      {!jobsLoading && savedJobs.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <BookmarkCheck className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">
-                Saved Jobs
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  {savedJobs.length}
-                </span>
-              </h3>
-            </div>
-            <Link href="/dashboard/jobs">
-              <Button variant="ghost" size="xs" className="text-muted-foreground">
-                View All
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {savedJobs.slice(0, 5).map((job) => (
-              <SavedJobRow key={job.id} job={job} onApply={handleApply} />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Apply Dialog */}
       <ApplyDialog
@@ -494,14 +487,17 @@ const CARD_GRADIENTS = [
 
 function TopJobCard({
   job,
+  matchScore,
   index,
   onApply,
 }: {
-  job: NormalizedJob;
+  job: CentralJob;
+  matchScore: number;
   index: number;
-  onApply: (job: NormalizedJob) => void;
+  onApply: (job: CentralJob) => void;
 }) {
   const router = useRouter();
+  const logoUrl = job.organizationLogo || (job.orgDomain ? `https://img.logo.dev/${job.orgDomain}?token=pk_anonymous&size=64` : "");
 
   return (
     <div
@@ -511,7 +507,6 @@ function TopJobCard({
       }}
       className={`relative rounded-xl bg-gradient-to-br ${CARD_GRADIENTS[index % CARD_GRADIENTS.length]} p-4 text-white overflow-hidden flex flex-col justify-between min-h-[140px] cursor-pointer transition-transform hover:scale-[1.02]`}
     >
-      {/* Match Score */}
       <div className="absolute top-3 right-3">
         <div className="relative h-9 w-9">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
@@ -522,26 +517,24 @@ function TopJobCard({
             <circle
               cx="18" cy="18" r="15" fill="none"
               strokeWidth="3" strokeLinecap="round"
-              strokeDasharray={`${(job.matchScore / 100) * 94.2} 94.2`}
+              strokeDasharray={`${(matchScore / 100) * 94.2} 94.2`}
               className="stroke-white"
             />
           </svg>
           <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-            {job.matchScore}%
+            {matchScore}%
           </span>
         </div>
       </div>
 
-      {/* Content */}
       <div className="pr-10">
-        <p className="text-[11px] text-white/70 mb-0.5">{job.company}</p>
+        <p className="text-[11px] text-white/70 mb-0.5">{job.organization}</p>
         <h4 className="text-xs font-semibold leading-tight line-clamp-2">{job.title}</h4>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between mt-3">
         <div className="flex items-center gap-1.5">
-          <CompanyLogo src={job.companyLogo} name={job.company} size="sm" />
+          <CompanyLogo src={logoUrl} name={job.organization} size="sm" />
         </div>
         <Button
           variant="secondary"
@@ -556,51 +549,3 @@ function TopJobCard({
   );
 }
 
-function SavedJobRow({
-  job,
-  onApply,
-}: {
-  job: NormalizedJob;
-  onApply: (job: NormalizedJob) => void;
-}) {
-  const router = useRouter();
-
-  function getScoreColor(score: number) {
-    if (score >= 80) return "text-green-600 ring-green-200";
-    if (score >= 60) return "text-blue-600 ring-blue-200";
-    if (score >= 40) return "text-amber-600 ring-amber-200";
-    return "text-red-600 ring-red-200";
-  }
-
-  return (
-    <div
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest("button")) return;
-        router.push(`/dashboard/jobs/${job.id}`);
-      }}
-      className="flex items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:bg-muted/30 cursor-pointer"
-    >
-      <CompanyLogo src={job.companyLogo} name={job.company} size="md" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{job.title}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <p className="text-xs text-muted-foreground truncate">{job.company}</p>
-          {job.location && (
-            <span className="hidden sm:flex items-center gap-0.5 text-[11px] text-muted-foreground">
-              <MapPin className="h-2.5 w-2.5" />
-              {job.location}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full ring-2 ${getScoreColor(job.matchScore)}`}>
-        <span className={`text-[10px] font-bold ${getScoreColor(job.matchScore).split(" ")[0]}`}>
-          {job.matchScore}%
-        </span>
-      </div>
-      <Button variant="default" size="xs" onClick={() => onApply(job)}>
-        Apply
-      </Button>
-    </div>
-  );
-}

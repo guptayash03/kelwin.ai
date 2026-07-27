@@ -1,3 +1,6 @@
+/**
+ * @deprecated No longer used at runtime. Jobs are now synced from Fantastic.jobs API.
+ */
 import type { RawJobListing } from "@/types/job";
 import type { CompanyConfig, JobProvider } from "./types";
 import { isIndiaLocation, isEntryLevelJob } from "./india-filter";

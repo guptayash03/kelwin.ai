@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import type { NormalizedJob } from "@/types/job";
+import type { CentralJob } from "@/types/central-job";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +15,7 @@ import {
 import { Sparkles, ExternalLink, Loader2, CheckCircle2 } from "lucide-react";
 
 interface ApplyDialogProps {
-  job: NormalizedJob | null;
+  job: CentralJob | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -51,11 +51,11 @@ export function ApplyDialog({ job, open, onOpenChange }: ApplyDialogProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jobId: job.id,
-          jobUrl: job.applyUrl,
+          jobUrl: job.url,
           jobTitle: job.title,
-          company: job.company,
-          companyLogo: job.companyLogo,
-          platform: job.platform,
+          company: job.organization,
+          companyLogo: job.organizationLogo || "",
+          platform: job.source,
         }),
       });
 
@@ -75,7 +75,7 @@ export function ApplyDialog({ job, open, onOpenChange }: ApplyDialogProps) {
 
   function handleManualApply() {
     if (!job) return;
-    window.open(job.applyUrl, "_blank", "noopener,noreferrer");
+    window.open(job.url, "_blank", "noopener,noreferrer");
     onOpenChange(false);
   }
 
@@ -85,7 +85,7 @@ export function ApplyDialog({ job, open, onOpenChange }: ApplyDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Apply to {job.company}</DialogTitle>
+          <DialogTitle>Apply to {job.organization}</DialogTitle>
           <DialogDescription>{job.title}</DialogDescription>
         </DialogHeader>
 

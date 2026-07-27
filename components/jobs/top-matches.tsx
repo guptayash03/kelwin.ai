@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { NormalizedJob } from "@/types/job";
+import type { CentralJob } from "@/types/central-job";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TopMatchesProps {
-  jobs: NormalizedJob[];
-  onApply: (job: NormalizedJob) => void;
+  jobs: Array<{ job: CentralJob; matchScore: number }>;
+  onApply: (job: CentralJob) => void;
 }
 
 const CARD_GRADIENTS = [
@@ -23,6 +23,12 @@ const CARD_GRADIENTS = [
 ];
 
 const CARDS_PER_PAGE = 4;
+
+function getLogoUrl(job: CentralJob): string {
+  if (job.organizationLogo) return job.organizationLogo;
+  if (job.orgDomain) return `https://img.logo.dev/${job.orgDomain}?token=pk_anonymous&size=64`;
+  return "";
+}
 
 export function TopMatches({ jobs, onApply }: TopMatchesProps) {
   const router = useRouter();
@@ -68,10 +74,10 @@ export function TopMatches({ jobs, onApply }: TopMatchesProps) {
         )}
       </div>
 
-      {/* Cards Grid - always 4 columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {pageJobs.map((job, i) => {
+        {pageJobs.map(({ job, matchScore }, i) => {
           const gradientIndex = currentPage * CARDS_PER_PAGE + i;
+          const logoUrl = getLogoUrl(job);
           return (
             <div
               key={job.id}
@@ -81,7 +87,6 @@ export function TopMatches({ jobs, onApply }: TopMatchesProps) {
               }}
               className={`relative rounded-xl bg-gradient-to-br ${CARD_GRADIENTS[gradientIndex % CARD_GRADIENTS.length]} p-5 text-white overflow-hidden flex flex-col justify-between min-h-[160px] cursor-pointer`}
             >
-              {/* Match percentage circle */}
               <div className="absolute top-4 right-4">
                 <div className="relative h-10 w-10">
                   <svg
@@ -103,46 +108,49 @@ export function TopMatches({ jobs, onApply }: TopMatchesProps) {
                       fill="none"
                       strokeWidth="3"
                       strokeLinecap="round"
-                      strokeDasharray={`${(job.matchScore / 100) * 94.2} 94.2`}
+                      strokeDasharray={`${(matchScore / 100) * 94.2} 94.2`}
                       className="stroke-white"
                     />
                   </svg>
                   <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-                    {job.matchScore}%
+                    {matchScore}%
                   </span>
                 </div>
               </div>
 
-              {/* Content */}
               <div className="pr-12">
-                <p className="text-xs text-white/70 mb-1">{job.company}</p>
+                <p className="text-xs text-white/70 mb-1">{job.organization}</p>
                 <h4 className="text-sm font-semibold leading-tight line-clamp-2">
                   {job.title}
                 </h4>
               </div>
 
-              {/* Footer */}
               <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-md overflow-hidden bg-white shrink-0 flex items-center justify-center">
-                    <img
-                      src={job.companyLogo}
-                      alt={job.company}
-                      className="h-6 w-6 object-contain"
-                      onError={(e) => {
-                        const el = e.target as HTMLImageElement;
-                        const domain = job.companyLogo.split("/")[3]?.split("?")[0];
-                        if (domain && !el.dataset.fallback) {
-                          el.dataset.fallback = "1";
-                          el.src = `https://img.logo.dev/${domain}?token=pk_anonymous&size=64`;
-                        } else {
-                          el.style.display = "none";
-                          el.parentElement!.innerHTML = `<span class="text-[10px] font-bold text-emerald-800">${job.company.charAt(0)}</span>`;
-                        }
-                      }}
-                    />
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={job.organization}
+                        className="h-6 w-6 object-contain"
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement;
+                          if (!el.dataset.fallback && job.orgDomain) {
+                            el.dataset.fallback = "1";
+                            el.src = `https://img.logo.dev/${job.orgDomain}?token=pk_anonymous&size=64`;
+                          } else {
+                            el.style.display = "none";
+                            el.parentElement!.innerHTML = `<span class="text-[10px] font-bold text-emerald-800">${job.organization.charAt(0)}</span>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-800">
+                        {job.organization.charAt(0)}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-xs text-white/80">{job.company}</span>
+                  <span className="text-xs text-white/80">{job.organization}</span>
                 </div>
                 <Button
                   variant="secondary"
@@ -158,7 +166,6 @@ export function TopMatches({ jobs, onApply }: TopMatchesProps) {
         })}
       </div>
 
-      {/* Pagination Dots */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-1.5">
           {Array.from({ length: totalPages }).map((_, i) => (
