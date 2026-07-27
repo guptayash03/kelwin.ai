@@ -15,6 +15,14 @@ import type { JobFilters } from "@/types/central-job";
 
 const PAGE_SIZE = 25;
 
+/**
+ * Builds a Firestore query for active jobs with optional filtering and pagination.
+ *
+ * @param filters - Filters for experience level, work arrangement, and source.
+ * @param lastDoc - The document after which to continue pagination.
+ * @param pageSize - The maximum number of jobs to return.
+ * @returns A Firestore query ordered by most recently synchronized jobs.
+ */
 export function buildJobQuery(
   filters: JobFilters,
   lastDoc?: QueryDocumentSnapshot<DocumentData> | null,
@@ -46,6 +54,13 @@ export function buildJobQuery(
   return query(collection(db, "centralJobs"), ...constraints);
 }
 
+/**
+ * Filters job documents using employment type, salary range, company, and keyword criteria.
+ *
+ * @param jobs - The job documents to filter
+ * @param filters - The optional criteria applied to each job
+ * @returns The jobs that satisfy every specified filter
+ */
 export function applyClientFilters(
   jobs: Array<{ data: DocumentData; id: string }>,
   filters: JobFilters

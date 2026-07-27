@@ -25,6 +25,12 @@ const LEVEL_CONFIG = {
   warning: { icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-400/10" },
 } as const;
 
+/**
+ * Formats a date as a 24-hour time string.
+ *
+ * @param date - The date to format
+ * @returns The localized time in `HH:MM:SS` format
+ */
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -34,6 +40,12 @@ function formatTime(date: Date): string {
   });
 }
 
+/**
+ * Renders an activity log panel with status-aware live indicators and automatic scrolling.
+ *
+ * @param logs - The activity entries to display.
+ * @param status - The current application status used to determine whether processing is ongoing.
+ */
 export function ActivityLog({ logs, status }: ActivityLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 

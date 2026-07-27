@@ -102,7 +102,16 @@ def compare_profile_to_fields(detected_fields: list, parsed_data: dict) -> list:
 
 
 async def handle_analysis(application_id: str, user_id: str):
-    """Phase 1: Use browser-use Agent to analyze the application form."""
+    """
+    Analyze a job application form and prepare it for submission.
+    
+    Parameters:
+        application_id (str): Identifier of the application to analyze.
+        user_id (str): Identifier of the user whose profile is matched against the form.
+    
+    Raises:
+        Exception: If the browser agent produces no output or its output is not valid JSON.
+    """
     from browser_use import Agent
 
     add_activity_log(application_id, "Starting application analysis", "info", "detecting_platform")

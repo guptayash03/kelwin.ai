@@ -20,6 +20,12 @@ export interface ScoredJob {
   matchScore: number;
 }
 
+/**
+ * Fetches active central jobs, scores them against the resume, and applies client-side filters.
+ *
+ * @param resume - The parsed resume used to calculate job match scores, or `null` to assign a score of zero.
+ * @returns The filtered jobs, loading state, fetch error, active filters, and filter update functions.
+ */
 export function useCentralJobs(resume: ParsedResumeData | null) {
   const [allJobs, setAllJobs] = useState<ScoredJob[]>([]);
   const [loading, setLoading] = useState(true);

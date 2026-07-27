@@ -15,6 +15,11 @@ import { EmptyState } from "@/components/jobs/empty-state";
 import { ApplyDialog } from "@/components/applications/apply-dialog";
 import { AlertCircle } from "lucide-react";
 
+/**
+ * Displays the user's job listings with filtering, match ranking, saving, and application actions.
+ *
+ * @returns The rendered jobs page
+ */
 export default function JobsPage() {
   const { user } = useAuth();
   const [resume, setResume] = useState<ParsedResumeData | null>(null);

@@ -26,6 +26,13 @@ interface FilterBarProps {
   onReset: () => void;
 }
 
+/**
+ * Renders keyword search and dropdown controls for filtering job listings.
+ *
+ * @param filters - The current job filter values.
+ * @param onFilterChange - Handles updates to individual filter values.
+ * @param onReset - Resets all active filters.
+ */
 export function FilterBar({ filters, onFilterChange, onReset }: FilterBarProps) {
   const [keyword, setKeyword] = useState(filters.keyword || "");
 

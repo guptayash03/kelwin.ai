@@ -108,7 +108,16 @@ If you cannot complete the submission, return:
 
 
 async def handle_submission(application_id: str, user_id: str):
-    """Phase 2: Use browser-use Agent to fill and submit the application."""
+    """
+    Complete an application using browser automation and persist its submitted state.
+    
+    Parameters:
+        application_id (str): Identifier of the application to submit.
+        user_id (str): Identifier of the applicant whose profile and resume are used.
+    
+    Raises:
+        Exception: If the browser agent produces no result or reports submission failure.
+    """
     from browser_use import Agent
 
     add_activity_log(application_id, "Starting form submission", "info", "applying")
