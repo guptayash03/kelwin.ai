@@ -171,7 +171,8 @@ async def handle_submission(application_id: str, user_id: str):
                 llm=llm,
                 browser=browser,
                 available_file_paths=[resume_path] if resume_path else None,
-                max_actions_per_step=5,
+                max_actions_per_step=10,
+                max_steps=30,
             )
 
             result = await agent.run()

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ApplicationDocument, ApplicationStatus } from "@/types/application";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { RefreshCw, AlertCircle, CheckCircle2, Clock, Loader2, FileQuestion } from "lucide-react";
 import { ACTIVE_STATUSES } from "@/types/application";
 
 function getStatusConfig(status: ApplicationStatus) {
@@ -26,9 +26,10 @@ function getStatusConfig(status: ApplicationStatus) {
 interface ApplicationCardProps {
   application: ApplicationDocument & { id: string };
   onRetry?: (id: string) => void;
+  onCompleteMissing?: (application: ApplicationDocument & { id: string }) => void;
 }
 
-export function ApplicationCard({ application, onRetry }: ApplicationCardProps) {
+export function ApplicationCard({ application, onRetry, onCompleteMissing }: ApplicationCardProps) {
   const router = useRouter();
   const statusConfig = getStatusConfig(application.status);
   const StatusIcon = statusConfig.icon;
@@ -90,6 +91,17 @@ export function ApplicationCard({ application, onRetry }: ApplicationCardProps) 
         >
           <RefreshCw className="h-3 w-3" />
           Retry
+        </Button>
+      )}
+      {application.status === "missing_profile_info" && onCompleteMissing && (
+        <Button
+          variant="outline"
+          size="xs"
+          onClick={() => onCompleteMissing(application)}
+          className="gap-1"
+        >
+          <FileQuestion className="h-3 w-3" />
+          Complete Info
         </Button>
       )}
     </div>

@@ -19,12 +19,12 @@ export const COMPANY_REGISTRY: CompanyConfig[] = [
   {
     name: "NVIDIA",
     domain: "nvidia.com",
-    platforms: { careerPortal: "nvidia.wd5.myworkdaysite.com", workday: "nvidia.wd5.myworkdaysite.com" },
+    platforms: { careerPortal: "nvidia.wd5.myworkdayjobs.com", workday: "nvidia.wd5.myworkdayjobs.com" },
   },
   {
     name: "Adobe",
     domain: "adobe.com",
-    platforms: { careerPortal: "careers.adobe.com", workday: "adobe.wd5.myworkdaysite.com" },
+    platforms: { careerPortal: "careers.adobe.com", workday: "adobe.wd5.myworkdayjobs.com" },
   },
   {
     name: "Atlassian",

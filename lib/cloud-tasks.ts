@@ -11,39 +11,58 @@ const SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL || "";
 
 let cachedKey: { client_email: string; private_key: string } | null = null;
 
-function getServiceAccountKey() {
+function getServiceAccountKey(): { client_email: string; private_key: string } | null {
   if (cachedKey) return cachedKey;
-  const keyPath = resolve(
-    process.env.GOOGLE_APPLICATION_CREDENTIALS || "./kelwin-app-sa-key.json"
-  );
-  cachedKey = JSON.parse(readFileSync(keyPath, "utf-8"));
-  return cachedKey!;
+  const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!keyPath) return null;
+  try {
+    cachedKey = JSON.parse(readFileSync(resolve(keyPath), "utf-8"));
+    return cachedKey;
+  } catch {
+    return null;
+  }
 }
 
 async function getAccessToken(): Promise<string> {
   const key = getServiceAccountKey();
-  const now = Math.floor(Date.now() / 1000);
-  const privateKey = await importPKCS8(key.private_key, "RS256");
 
-  const jwt = await new SignJWT({
-    iss: key.client_email,
-    sub: key.client_email,
-    aud: "https://oauth2.googleapis.com/token",
-    scope: "https://www.googleapis.com/auth/cloud-tasks",
-    iat: now,
-    exp: now + 3600,
-  })
-    .setProtectedHeader({ alg: "RS256", typ: "JWT" })
-    .sign(privateKey);
+  if (key) {
+    const now = Math.floor(Date.now() / 1000);
+    const privateKey = await importPKCS8(key.private_key, "RS256");
 
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-  });
+    const jwt = await new SignJWT({
+      iss: key.client_email,
+      sub: key.client_email,
+      aud: "https://oauth2.googleapis.com/token",
+      scope: "https://www.googleapis.com/auth/cloud-tasks",
+      iat: now,
+      exp: now + 3600,
+    })
+      .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+      .sign(privateKey);
 
-  const tokenData = await tokenRes.json();
-  return tokenData.access_token;
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    });
+
+    const tokenData = await tokenRes.json();
+    return tokenData.access_token;
+  }
+
+  // On GCP (Cloud Run), use the metadata server for access token
+  const metadataRes = await fetch(
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+    { headers: { "Metadata-Flavor": "Google" } }
+  );
+
+  if (!metadataRes.ok) {
+    throw new Error("Failed to get access token from metadata server");
+  }
+
+  const metadataData = await metadataRes.json();
+  return metadataData.access_token;
 }
 
 export async function createApplicationTask(

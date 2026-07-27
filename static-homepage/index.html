@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kelwin — AI Agent for High Paying SDE Roles</title>
+  <meta name="description" content="Kelwin finds, applies, and lands you high-paying software engineering roles — automatically. AI-powered applications that actually get callbacks." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400;1,9..40,500;1,9..40,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="parley-page">
+
+  <!-- ============ TOP NAV ============ -->
+  <div class="nav-bar" style="padding:1.2rem 2rem;">
+    <nav class="nav">
+      <a href="#hero" class="nav__brand" aria-label="Kelwin">
+        <img src="/assets/kelwin-logo.svg" alt="Kelwin" width="260" height="70" />
+      </a>
+      <div style="position:absolute;left:50%;transform:translateX(-50%);">
+        <ul class="nav__links">
+          <li><a href="#delegation">How it works</a></li>
+          <li aria-hidden="true" class="nav__sep"></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li aria-hidden="true" class="nav__sep"></li>
+          <li><a href="#footer">Contact</a></li>
+        </ul>
+      </div>
+      <div class="nav__right" style="gap:0.5rem;">
+        <a href="https://platform.kelwin.app/" class="fbtn fbtn--secondary">
+          <span class="fbtn__chip"><span class="fbtn__arrows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+          <span class="fbtn__label"><span>Log in</span><span aria-hidden="true">Log in</span></span>
+        </a>
+        <a href="https://platform.kelwin.app/" class="fbtn fbtn--primary">
+          <span class="fbtn__chip"><span class="fbtn__arrows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+          <span class="fbtn__label"><span>Sign up</span><span aria-hidden="true">Sign up</span></span>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="container">
+
+      <!-- ============ HOW IT WORKS (HERO) ============ -->
+      <section class="hiw" id="hero" style="padding-top:120px;">
+        <header class="hiw__header">
+          <p class="badge" style="font-size:1.4rem;">Meet Kelwin</p>
+          <h2 class="h2 h2--center">the AI Agent that lands you.<br/><em>high-paying SDE roles.</em></h2>
+        </header>
+        <div class="hiw__panel" id="hiw-panel">
+          <div class="hiw__pills" role="list">
+            <button class="hiw__pill is-active" data-step="0" type="button" aria-pressed="true" onclick="event.preventDefault();event.stopPropagation();">Upload your resume</button>
+            <button class="hiw__pill" data-step="1" type="button" aria-pressed="false" onclick="event.preventDefault();event.stopPropagation();">Pick target roles</button>
+            <button class="hiw__pill" data-step="2" type="button" aria-pressed="false" onclick="event.preventDefault();event.stopPropagation();">Kelwin applies for you</button>
+          </div>
+          <div class="hiw__stage">
+            <div class="hiw__lottie is-active" data-step="0"></div>
+            <div class="hiw__lottie" data-step="1" hidden></div>
+            <div class="hiw__lottie" data-step="2" hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ LOGO STRIP ============ -->
+      <section class="logos" style="margin-top:-4rem;">
+        <p class="logos__label">Land roles at top companies</p>
+        <ul class="logos__list" role="list" style="display:flex;align-items:center;justify-content:center;gap:3rem;flex-wrap:wrap;">
+          <li class="logo" style="list-style:none;"><img src="/assets/google.svg" alt="Google" style="height:32px;" /></li>
+          <li class="logo" style="list-style:none;"><img src="/assets/microsoft.svg" alt="Microsoft" style="height:28px;" /></li>
+          <li class="logo" style="list-style:none;"><img src="/assets/amazon.svg" alt="Amazon" style="height:30px;" /></li>
+          <li class="logo" style="list-style:none;"><img src="/assets/stripe.svg" alt="Stripe" style="height:32px;" /></li>
+          <li class="logo" style="list-style:none;"><img src="/assets/zomato.svg" alt="Zomato" style="height:80px;" /></li>
+        </ul>
+      </section>
+
+      <!-- WHY KELWIN commented out
+      <section class="why" id="why">
+        ...
+      </section>
+      -->
+
+      <!-- ============ INTELLIGENT DELEGATION ============ -->
+      <section class="delegation" id="delegation">
+        <div class="delegation__scroll" id="delegation-scroll">
+          <div class="trigger" data-step="0"></div>
+          <div class="trigger" data-step="1"></div>
+          <div class="trigger" data-step="2"></div>
+          <div class="trigger" data-step="3"></div>
+          <div class="delegation__pin">
+            <header class="delegation__header">
+              <div class="delegation__heading">
+                <p class="badge">How It Works</p>
+                <h2 class="h2 h2--oneline">4 Steps. One Agent. <em>It applies for you.</em></h2>
+              </div>
+            </header>
+            <div class="delegation__inner">
+              <ol class="features" role="tablist" id="features-list">
+                <li class="feature">
+                  <button class="feature__btn" type="button" role="tab" data-step="0" aria-selected="true" aria-controls="mock-0">
+                    <img class="feature__chevron" src="https://parley-home.vercel.app/assets/arrows.svg" alt="" aria-hidden="true" />
+                    <span class="feature__head">
+                      <span class="feature__label">01. Upload Resume</span>
+                      <span class="feature__desc">Set your target — role, salary range, stack, location. Kelwin scans thousands of career pages daily and surfaces only high-confidence matches.</span>
+                    </span>
+                  </button>
+                </li>
+                <li class="feature">
+                  <button class="feature__btn" type="button" role="tab" data-step="1" aria-selected="false" aria-controls="mock-1">
+                    <img class="feature__chevron" src="https://parley-home.vercel.app/assets/arrows.svg" alt="" aria-hidden="true" />
+                    <span class="feature__head">
+                      <span class="feature__label">02. AI Job Search</span>
+                      <span class="feature__desc">Kelwin crawls Greenhouse, Lever, Workday and 50+ platforms to find roles that match your profile, experience, and preferences.</span>
+                    </span>
+                  </button>
+                </li>
+                <li class="feature">
+                  <button class="feature__btn" type="button" role="tab" data-step="2" aria-selected="false" aria-controls="mock-2">
+                    <img class="feature__chevron" src="https://parley-home.vercel.app/assets/arrows.svg" alt="" aria-hidden="true" />
+                    <span class="feature__head">
+                      <span class="feature__label">03. Easy Apply with AI</span>
+                      <span class="feature__desc">One click and Kelwin fills every field, generates tailored screening answers, uploads your resume, and submits — all automatically.</span>
+                    </span>
+                  </button>
+                </li>
+                <li class="feature">
+                  <button class="feature__btn" type="button" role="tab" data-step="3" aria-selected="false" aria-controls="mock-3">
+                    <img class="feature__chevron" src="https://parley-home.vercel.app/assets/arrows.svg" alt="" aria-hidden="true" />
+                    <span class="feature__head">
+                      <span class="feature__label">04. Review before submit</span>
+                      <span class="feature__desc">Kelwin shows you a full preview of every answer and field before submitting. You stay in control — approve, edit, or skip.</span>
+                    </span>
+                  </button>
+                </li>
+              </ol>
+              <script>
+                document.getElementById('features-list').addEventListener('click', function(e) {
+                  e.stopPropagation();
+                  var btn = e.target.closest('.feature__btn');
+                  if (!btn) return;
+                  var btns = this.querySelectorAll('.feature__btn');
+                  var mocks = document.querySelectorAll('.parley-page .mock');
+                  btns.forEach(function(b) { b.setAttribute('aria-selected', 'false'); });
+                  btn.setAttribute('aria-selected', 'true');
+                  var step = btn.getAttribute('data-step');
+                  mocks.forEach(function(m) {
+                    if (m.getAttribute('data-step') === step) { m.classList.add('is-active'); m.removeAttribute('hidden'); }
+                    else { m.classList.remove('is-active'); m.setAttribute('hidden', ''); }
+                  });
+                }, true);
+              </script>
+              <div class="stage" aria-live="polite">
+                <div class="mock is-active" id="mock-0" role="tabpanel" data-step="0">
+                  <img class="mock__img" src="https://parley-home.vercel.app/assets/mock-0.png" srcset="https://parley-home.vercel.app/assets/mock-0.png 1x, https://parley-home.vercel.app/assets/mock-0@2x.png 2x" alt="" />
+                </div>
+                <div class="mock" id="mock-1" role="tabpanel" data-step="1" hidden>
+                  <img class="mock__img" src="https://parley-home.vercel.app/assets/mock-2.png" srcset="https://parley-home.vercel.app/assets/mock-2.png 1x, https://parley-home.vercel.app/assets/mock-2@2x.png 2x" alt="" />
+                </div>
+                <div class="mock" id="mock-2" role="tabpanel" data-step="2" hidden>
+                  <img class="mock__img" src="https://parley-home.vercel.app/assets/mock-1.png" srcset="https://parley-home.vercel.app/assets/mock-1.png 1x, https://parley-home.vercel.app/assets/mock-1@2x.png 2x" alt="" />
+                </div>
+                <div class="mock" id="mock-3" role="tabpanel" data-step="3" hidden>
+                  <img class="mock__img" src="https://parley-home.vercel.app/assets/mock-3.png" srcset="https://parley-home.vercel.app/assets/mock-3.png 1x, https://parley-home.vercel.app/assets/mock-3@2x.png 2x" alt="" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TESTIMONIALS commented out
+      <section class="testimonials bleed" id="testimonials">
+        ...
+      </section>
+      -->
+
+      <!-- ============ PRICING ============ -->
+      <section class="pricing" id="pricing">
+        <header class="pricing__header">
+          <div class="pricing__heading">
+            <p class="badge">Pricing</p>
+            <h2 class="h2 h2--oneline">Pay for the applications. <em>Not the tool.</em></h2>
+          </div>
+          <div class="pricing__side">
+            <div class="toggle" role="tablist" aria-label="Billing period">
+              <button class="toggle__btn is-active" type="button" role="tab" aria-selected="true">Monthly</button>
+              <button class="toggle__btn" type="button" role="tab" aria-selected="false">Annual <span class="toggle__off">-15%</span></button>
+            </div>
+          </div>
+        </header>
+        <div class="plans" id="plans">
+          <article class="plan" data-index="0">
+            <h3 class="plan__name">Pro</h3>
+            <div class="plan__price"><span class="plan__currency"></span><span class="plan__amount">Free</span></div>
+            <p class="plan__period">forever</p>
+            <p class="plan__desc">For serious job seekers who want to maximize their callback rate and apply at scale.</p>
+            <ul class="plan-features">
+              <li style="font-weight:600;color:var(--accent,#6c5ce7);font-size:1.1em;"><span class="plan-features__dot"></span>100 AI applications / month</li>
+              <li><span class="plan-features__dot"></span>Advanced AI screening answers</li>
+              <li><span class="plan-features__dot"></span>Priority application queue</li>
+            </ul>
+            <a href="https://platform.kelwin.app/" class="fbtn fbtn--secondary fbtn--full">
+              <span class="fbtn__chip"><span class="fbtn__arrows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+              <span class="fbtn__label"><span>Login</span><span aria-hidden="true">Login</span></span>
+            </a>
+          </article>
+          <article class="plan is-featured" data-index="1">
+            <h3 class="plan__name">Unlimited</h3>
+            <div class="plan__price"><span class="plan__currency">&#8377;</span><span class="plan__amount">199</span></div>
+            <p class="plan__period">per month, billed monthly</p>
+            <p class="plan__desc">For engineers targeting multiple roles simultaneously. No limits, maximum reach across every platform.</p>
+            <ul class="plan-features">
+              <li style="font-weight:600;color:var(--accent,#6c5ce7);font-size:1.1em;"><span class="plan-features__dot"></span>Unlimited AI applications</li>
+              <li><span class="plan-features__dot"></span>Answer tone &amp; style tuning</li>
+              <li><span class="plan-features__dot"></span>Multiple resume profiles</li>
+            </ul>
+            <a href="https://platform.kelwin.app/" class="fbtn fbtn--primary fbtn--full">
+              <span class="fbtn__chip"><span class="fbtn__arrows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+              <span class="fbtn__label"><span>Get started free</span><span aria-hidden="true">Get started free</span></span>
+            </a>
+          </article>
+        </div>
+      </section>
+
+
+      <!-- FAQ commented out
+      <section class="faq" id="faq">
+        ...
+      </section>
+      -->
+
+      <!-- ============ INTEGRATIONS ============ -->
+      <section class="integrations" id="integrations">
+        <header class="integrations__header">
+          <p class="badge">Platforms</p>
+          <h2 class="h2 h2--center">Works with every major<br/><em>career platform.</em></h2>
+          <p class="integrations__lede">Greenhouse, Lever, Workday, Ashby, and 50+ company career portals. Kelwin navigates them all — so you don&rsquo;t have to.</p>
+        </header>
+        <div class="int-marquee">
+          <div class="int-marquee__row" data-dir="left">
+            <div class="int-marquee__set">
+              <span class="int-tile"><img src="/assets/linkedin.svg" alt="LinkedIn" /></span>
+              <span class="int-tile"><img src="/assets/greenhouse.svg" alt="Greenhouse" /></span>
+              <span class="int-tile"><img src="/assets/lever.svg" alt="Lever" /></span>
+              <span class="int-tile"><img src="/assets/ashby.svg" alt="Ashby" /></span>
+              <span class="int-tile"><img src="/assets/workday.svg" alt="Workday" /></span>
+              <span class="int-tile"><img src="/assets/indeed.svg" alt="Indeed" /></span>
+              <span class="int-tile"><img src="/assets/icims.svg" alt="iCIMS" /></span>
+              <span class="int-tile"><img src="/assets/smartrecruiters.svg" alt="SmartRecruiters" /></span>
+            </div>
+            <div class="int-marquee__set" aria-hidden="true">
+              <span class="int-tile"><img src="/assets/linkedin.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/greenhouse.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/lever.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/ashby.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/workday.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/indeed.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/icims.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/smartrecruiters.svg" alt="" /></span>
+            </div>
+          </div>
+          <div class="int-marquee__row" data-dir="right">
+            <div class="int-marquee__set">
+              <span class="int-tile"><img src="/assets/workday.svg" alt="Workday" /></span>
+              <span class="int-tile"><img src="/assets/linkedin.svg" alt="LinkedIn" /></span>
+              <span class="int-tile"><img src="/assets/ashby.svg" alt="Ashby" /></span>
+              <span class="int-tile"><img src="/assets/lever.svg" alt="Lever" /></span>
+              <span class="int-tile"><img src="/assets/greenhouse.svg" alt="Greenhouse" /></span>
+              <span class="int-tile"><img src="/assets/smartrecruiters.svg" alt="SmartRecruiters" /></span>
+              <span class="int-tile"><img src="/assets/indeed.svg" alt="Indeed" /></span>
+              <span class="int-tile"><img src="/assets/icims.svg" alt="iCIMS" /></span>
+            </div>
+            <div class="int-marquee__set" aria-hidden="true">
+              <span class="int-tile"><img src="/assets/workday.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/linkedin.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/ashby.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/lever.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/greenhouse.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/smartrecruiters.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/indeed.svg" alt="" /></span>
+              <span class="int-tile"><img src="/assets/icims.svg" alt="" /></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CTA ============ -->
+      <section class="cta" id="cta">
+        <div class="cta__panel">
+          <img class="cta__bg" src="https://parley-home.vercel.app/assets/cta-sunset.png" alt="" loading="lazy" />
+          <div class="cta__overlay"></div>
+          <div class="cta__content">
+            <h2 class="cta__title">The AI Agent that lands you<br/><em>high-paying SDE roles.</em></h2>
+            <p class="cta__lede">Join thousands of engineers who use Kelwin to apply at scale.<br/>Set up in 2 minutes. Your first 5 applications are free.</p>
+            <a href="https://platform.kelwin.app/" class="fbtn fbtn--primary">
+              <span class="fbtn__chip"><span class="fbtn__arrows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+              <span class="fbtn__label"><span>Get started free</span><span aria-hidden="true">Get started free</span></span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ FOOTER ============ -->
+    <footer class="footer" id="footer">
+      <div class="footer__inner">
+        <div class="footer__top">
+          <img class="footer__logo" src="/assets/kelwin-logo.svg" alt="Kelwin" width="160" height="44" />
+          <div class="footer__social">
+            <span class="footer__social-label">Social media</span>
+            <div class="footer__social-btns">
+              <a class="footer__social-btn" href="https://x.com/" target="_blank" rel="noopener" aria-label="X">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.53 3h3.18l-6.95 7.94L22 21h-6.41l-5.02-6.56L4.83 21H1.65l7.43-8.49L1.5 3h6.57l4.54 6.01zM16.4 19h1.76L7.69 4.9H5.81z"/></svg>
+              </a>
+              <a class="footer__social-btn" href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57zM22.22 0H1.77C.8 0 0 .78 0 1.74v20.52C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.74V1.74C24 .78 23.2 0 22.22 0z"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="footer__mid">
+          <p class="footer__tagline">Email: <a href="mailto:yash@kelwin.app" style="color:inherit;text-decoration:none;">yash@kelwin.app</a><br/>WhatsApp: <a href="https://wa.me/918882115099" style="color:inherit;text-decoration:none;">8882115099</a></p>
+          <nav class="footer__cols" aria-label="Footer">
+            <div class="footer__col">
+              <p class="footer__col-title"><span class="footer__square"></span>Product</p>
+              <a href="#how-it-works">How it works</a>
+              <a href="#pricing">Pricing</a>
+              <a href="#faq">FAQ</a>
+            </div>
+            <div class="footer__col">
+              <p class="footer__col-title"><span class="footer__square"></span>Company</p>
+              <a href="#">About</a>
+              <a href="#">Contact</a>
+            </div>
+            <div class="footer__col">
+              <p class="footer__col-title"><span class="footer__square"></span>Legal</p>
+              <a href="#">Privacy Policy</a>
+              <a href="#">Terms of Service</a>
+            </div>
+          </nav>
+        </div>
+        <div class="footer__mark">
+          <span class="footer__watermark" style="font-family:'DM Sans',sans-serif;font-size:10rem;font-weight:600;opacity:0.06;user-select:none;">Kelwin</span>
+          <img class="footer__mosaic" src="https://parley-home.vercel.app/assets/footer-mosaic.png" alt="" loading="lazy" />
+          <div class="footer__bottom">
+            <p>&copy; 2026 Kelwin AI. All rights reserved.</p>
+            <a href="#">Terms &amp; Conditions</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script src="https://parley-home.vercel.app/assets/lottie.min.js"></script>
+<script src="/script.js"></script>
+</body>
+</html>

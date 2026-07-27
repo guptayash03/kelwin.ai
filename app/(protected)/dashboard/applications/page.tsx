@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useApplications } from "@/hooks/use-applications";
 import { ApplicationCard } from "@/components/applications/application-card";
+import { MissingFieldsDialog } from "@/components/applications/missing-fields-dialog";
 import { Button } from "@/components/ui/button";
 import { Briefcase, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import type { ApplicationDocument } from "@/types/application";
 
 type Filter = "all" | "active" | "queued" | "applied" | "failed";
 
@@ -16,6 +18,7 @@ export default function ApplicationsPage() {
     useApplications();
   const [filter, setFilter] = useState<Filter>("all");
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [missingApp, setMissingApp] = useState<(ApplicationDocument & { id: string }) | null>(null);
 
   const filtered = applications.filter((app) => {
     switch (filter) {
@@ -123,6 +126,7 @@ export default function ApplicationsPage() {
               key={app.id}
               application={app}
               onRetry={handleRetry}
+              onCompleteMissing={setMissingApp}
             />
           ))}
         </div>
@@ -149,6 +153,19 @@ export default function ApplicationsPage() {
             </Link>
           )}
         </div>
+      )}
+
+      {/* Missing Fields Dialog */}
+      {missingApp && (
+        <MissingFieldsDialog
+          open={!!missingApp}
+          onOpenChange={(open) => !open && setMissingApp(null)}
+          applicationId={missingApp.id}
+          missingFields={missingApp.missingFields}
+          jobTitle={missingApp.jobTitle}
+          company={missingApp.company}
+          onComplete={() => setMissingApp(null)}
+        />
       )}
     </div>
   );

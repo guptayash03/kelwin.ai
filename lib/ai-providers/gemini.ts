@@ -12,7 +12,7 @@ export class GeminiProvider implements AIProvider {
     if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     const model = genAI.getGenerativeModel({ model: modelName });
 
     const result = await model.generateContent([

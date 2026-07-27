@@ -3,10 +3,10 @@ import type { CompanyConfig, JobProvider } from "./types";
 import { isEntryLevelJob } from "./india-filter";
 
 const WORKDAY_QUERIES = [
-  "entry level Software Engineer India 2026 2027",
-  "new grad engineer India intern 2027 2028",
-  "university hiring India engineer graduate 2027",
-  "junior developer India campus graduating",
+  "Software Engineer intern",
+  "new grad engineer entry level",
+  "junior developer associate",
+  "intern software India",
 ];
 
 export class WorkdayProvider implements JobProvider {

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useApplication } from "@/hooks/use-application";
 import { ApplicationTimeline } from "@/components/applications/application-timeline";
+import { MissingFieldsDialog } from "@/components/applications/missing-fields-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,6 +15,7 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
+  FileQuestion,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -21,6 +24,7 @@ export default function ApplicationDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { application, loading, error } = useApplication(params.id);
+  const [missingFieldsOpen, setMissingFieldsOpen] = useState(false);
 
   async function handleRetry() {
     if (!user || !application) return;
@@ -38,21 +42,6 @@ export default function ApplicationDetailPage() {
     }
   }
 
-  async function handleResumeApply() {
-    if (!user || !application) return;
-    try {
-      const token = await user.getIdToken(true);
-      document.cookie = `__session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-
-      await fetch("/api/applications/resume-apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId: application.id }),
-      });
-    } catch (err) {
-      console.error("Resume apply failed:", err);
-    }
-  }
 
   if (loading) {
     return (
@@ -160,8 +149,9 @@ export default function ApplicationDetailPage() {
             </Button>
           )}
           {application.status === "missing_profile_info" && (
-            <Button variant="default" size="sm" onClick={handleResumeApply}>
-              Resume Application
+            <Button variant="default" size="sm" onClick={() => setMissingFieldsOpen(true)}>
+              <FileQuestion className="h-4 w-4" />
+              Complete Missing Info
             </Button>
           )}
           {application.confirmationUrl && (
@@ -212,7 +202,7 @@ export default function ApplicationDetailPage() {
             application.missingFields.length > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 space-y-3">
                 <h2 className="text-base font-semibold text-amber-800">
-                  Missing Profile Info
+                  Missing Information
                 </h2>
                 <ul className="space-y-1">
                   {application.missingFields.map((field) => (
@@ -225,11 +215,15 @@ export default function ApplicationDetailPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/dashboard/profile">
-                  <Button variant="outline" size="sm" className="w-full mt-2">
-                    Complete Profile
-                  </Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => setMissingFieldsOpen(true)}
+                >
+                  <FileQuestion className="h-3.5 w-3.5" />
+                  Complete Missing Info
+                </Button>
               </div>
             )}
 
@@ -246,6 +240,19 @@ export default function ApplicationDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Missing Fields Dialog */}
+      {application.status === "missing_profile_info" && (
+        <MissingFieldsDialog
+          open={missingFieldsOpen}
+          onOpenChange={setMissingFieldsOpen}
+          applicationId={application.id!}
+          missingFields={application.missingFields}
+          jobTitle={application.jobTitle}
+          company={application.company}
+          onComplete={() => {}}
+        />
+      )}
     </div>
   );
 }

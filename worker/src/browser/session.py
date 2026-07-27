@@ -5,7 +5,7 @@ from ..config import config
 
 @asynccontextmanager
 async def create_browser():
-    """Create a managed browser-use Browser instance."""
+    """Create a managed browser-use Browser instance with optimized settings."""
     browser = Browser(
         headless=config.BROWSER_USE_HEADLESS,
         args=[
@@ -13,6 +13,8 @@ async def create_browser():
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
+            "--disable-blink-features=AutomationControlled",
+            "--window-size=1920,1080",
         ],
     )
     try:

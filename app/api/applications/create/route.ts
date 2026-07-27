@@ -4,7 +4,6 @@ import { decodeJwt } from "jose";
 import { createApplicationTask } from "@/lib/cloud-tasks";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import { ACTIVE_STATUSES } from "@/types/application";
 
 export const dynamic = "force-dynamic";
 
@@ -48,15 +47,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const activeSnapshot = await adminDb
-      .collection("applications")
-      .where("userId", "==", uid)
-      .where("status", "in", ACTIVE_STATUSES)
-      .limit(1)
-      .get();
-
-    const hasActive = !activeSnapshot.empty;
-
     const docRef = await adminDb.collection("applications").add({
       userId: uid,
       jobId,
@@ -69,7 +59,7 @@ export async function POST(request: NextRequest) {
       detectedFields: [],
       screeningQuestions: [],
       missingFields: [],
-      currentTaskType: hasActive ? null : "analysis",
+      currentTaskType: "analysis",
       confirmationMessage: null,
       confirmationUrl: null,
       failureReason: null,
@@ -79,18 +69,17 @@ export async function POST(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    if (!hasActive) {
-      await createApplicationTask(docRef.id, uid, "analysis");
-    }
+    await createApplicationTask(docRef.id, uid, "analysis");
 
     return NextResponse.json({
       applicationId: docRef.id,
-      queued: hasActive,
+      queued: false,
     });
   } catch (err) {
-    console.error("Failed to create application:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Failed to create application:", message);
     return NextResponse.json(
-      { error: "Failed to create application" },
+      { error: `Failed to create application: ${message}` },
       { status: 500 }
     );
   }

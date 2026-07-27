@@ -13,10 +13,10 @@ def _ensure_init():
         try:
             cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred, {
+                "projectId": config.FIREBASE_PROJECT_ID,
                 "storageBucket": config.FIREBASE_STORAGE_BUCKET,
             })
         except Exception:
-            # In case no credentials available (e.g., health check), skip init
             pass
     _initialized = True
 

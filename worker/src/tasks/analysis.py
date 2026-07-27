@@ -123,7 +123,8 @@ async def handle_analysis(application_id: str, user_id: str):
             task=task_with_url,
             llm=llm,
             browser=browser,
-            max_actions_per_step=5,
+            max_actions_per_step=10,
+            max_steps=20,
         )
 
         result = await agent.run()
