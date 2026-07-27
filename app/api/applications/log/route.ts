@@ -5,6 +5,12 @@ import { FieldValue } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Writes an application log entry to Firestore.
+ *
+ * @param request - The authenticated request containing the application identifier, message, and optional log metadata.
+ * @returns A success response, or an error response for unauthorized requests, invalid input, or failed writes.
+ */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const expectedSecret = process.env.JOBS_SYNC_SECRET;

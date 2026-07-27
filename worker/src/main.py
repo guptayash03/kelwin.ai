@@ -32,6 +32,15 @@ async def health():
 
 @app.post("/tasks/analysis")
 async def task_analysis(request: Request):
+    """
+    Process an analysis task for an application after authenticating the request.
+    
+    Raises:
+        HTTPException: If the OIDC token is invalid or required request fields are missing.
+    
+    Returns:
+        dict: A status indicating whether processing was completed, skipped, or failed.
+    """
     if not verify_oidc_token(request):
         raise HTTPException(status_code=401, detail="Invalid OIDC token")
 
@@ -72,6 +81,22 @@ async def task_analysis(request: Request):
 
 @app.post("/tasks/submission")
 async def task_submission(request: Request):
+    """
+    Process a submission task for an application.
+    
+    Parameters:
+        request (Request): Request containing authentication details and the application's
+            `applicationId` and `userId`.
+    
+    Returns:
+        dict: A status of `"skipped"` for terminal applications, `"completed"` after
+            successful submission, or `"failed"` when submission processing raises an
+            exception.
+    
+    Raises:
+        HTTPException: With status 401 for invalid authentication or status 400 when
+            `applicationId` or `userId` is missing.
+    """
     if not verify_oidc_token(request):
         raise HTTPException(status_code=401, detail="Invalid OIDC token")
 

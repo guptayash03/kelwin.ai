@@ -21,6 +21,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+/**
+ * Displays application details, progress, activity logs, and available actions.
+ *
+ * @returns The application details page content.
+ */
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();

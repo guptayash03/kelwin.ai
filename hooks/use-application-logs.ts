@@ -17,6 +17,12 @@ export interface ApplicationLog {
   step?: string;
 }
 
+/**
+ * Subscribes to an application's logs and provides the current entries ordered by timestamp.
+ *
+ * @param applicationId - The identifier of the application whose logs to observe; `null` disables the subscription.
+ * @returns The current application log entries.
+ */
 export function useApplicationLogs(applicationId: string | null) {
   const [logs, setLogs] = useState<ApplicationLog[]>([]);
 

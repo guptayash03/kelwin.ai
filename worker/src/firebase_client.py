@@ -51,6 +51,15 @@ def get_application(application_id: str) -> dict:
 
 
 def get_user_profile(user_id: str) -> dict:
+    """
+    Retrieve a user's profile and associated resume data.
+    
+    Parameters:
+    	user_id (str): Identifier of the user whose profile should be retrieved.
+    
+    Returns:
+    	dict: A dictionary containing the user data, resume data, and parsed resume data.
+    """
     db = get_db()
     user_doc = db.collection("users").document(user_id).get()
     if not user_doc.exists:
@@ -74,6 +83,15 @@ def get_user_profile(user_id: str) -> dict:
 
 
 def add_activity_log(application_id: str, message: str, level: str = "info", step: str = None):
+    """
+    Record an activity entry for an application.
+    
+    Parameters:
+    	application_id (str): Identifier of the application associated with the activity.
+    	message (str): Activity message to record.
+    	level (str): Severity level of the activity.
+    	step (str): Optional processing step associated with the activity.
+    """
     db = get_db()
     log_data = {
         "level": level,
@@ -85,6 +103,15 @@ def add_activity_log(application_id: str, message: str, level: str = "info", ste
 
 
 def download_resume(user_id: str, storage_path: str) -> bytes:
+    """
+    Download a resume file from Cloud Storage.
+    
+    Parameters:
+    	storage_path (str): Path of the resume file in Cloud Storage.
+    
+    Returns:
+    	bytes: Contents of the resume file.
+    """
     bucket = get_bucket()
     blob = bucket.blob(storage_path)
     return blob.download_as_bytes()
