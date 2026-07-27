@@ -1,3 +1,6 @@
+/**
+ * @deprecated No longer used at runtime. Jobs are now synced from Fantastic.jobs API.
+ */
 import type { CompanyConfig } from "./types";
 
 export const COMPANY_REGISTRY: CompanyConfig[] = [

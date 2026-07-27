@@ -1,3 +1,6 @@
+/**
+ * @deprecated No longer used at runtime. Jobs are now synced from Fantastic.jobs API.
+ */
 const INDIA_LOCATIONS = [
   "india",
   "bengaluru",

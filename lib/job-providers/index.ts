@@ -1,3 +1,8 @@
+/**
+ * @deprecated This module is no longer used at runtime. Jobs are now synced from
+ * Fantastic.jobs API and served from the centralJobs Firestore collection.
+ * Kept for potential future use or reference.
+ */
 import type { JobPlatform } from "@/types/job";
 import type { JobProvider } from "./types";
 import { GreenhouseProvider } from "./greenhouse";

@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { NormalizedJob } from "@/types/job";
+import type { CentralJob } from "@/types/central-job";
 import { JobCard } from "./job-card";
 import { Button } from "@/components/ui/button";
 
 interface JobListProps {
-  jobs: NormalizedJob[];
+  jobs: Array<{ job: CentralJob; matchScore: number }>;
+  savedJobIds: Set<string>;
   onSave: (jobId: string) => void;
-  onApply: (job: NormalizedJob) => void;
+  onApply: (job: CentralJob) => void;
 }
 
 type SortBy = "matchScore" | "postedDate" | "company";
 
-export function JobList({ jobs, onSave, onApply }: JobListProps) {
+export function JobList({ jobs, savedJobIds, onSave, onApply }: JobListProps) {
   const [sortBy, setSortBy] = useState<SortBy>("matchScore");
 
   const sorted = [...jobs].sort((a, b) => {
@@ -21,9 +22,9 @@ export function JobList({ jobs, onSave, onApply }: JobListProps) {
       case "matchScore":
         return b.matchScore - a.matchScore;
       case "postedDate":
-        return (b.postedDate || "").localeCompare(a.postedDate || "");
+        return (b.job.datePosted || "").localeCompare(a.job.datePosted || "");
       case "company":
-        return a.company.localeCompare(b.company);
+        return a.job.organization.localeCompare(b.job.organization);
       default:
         return 0;
     }
@@ -63,8 +64,15 @@ export function JobList({ jobs, onSave, onApply }: JobListProps) {
         </div>
       </div>
       <div className="space-y-2">
-        {sorted.map((job) => (
-          <JobCard key={job.id} job={job} onSave={onSave} onApply={onApply} />
+        {sorted.map(({ job, matchScore }) => (
+          <JobCard
+            key={job.id}
+            job={job}
+            matchScore={matchScore}
+            saved={savedJobIds.has(job.id)}
+            onSave={onSave}
+            onApply={onApply}
+          />
         ))}
       </div>
     </div>

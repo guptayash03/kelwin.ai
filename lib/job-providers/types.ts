@@ -1,3 +1,6 @@
+/**
+ * @deprecated No longer used at runtime. Jobs are now synced from Fantastic.jobs API.
+ */
 import type { JobPlatform, RawJobListing } from "@/types/job";
 
 export interface CompanyConfig {
