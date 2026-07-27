@@ -6,13 +6,12 @@ import { useAuth } from "@/contexts/auth-context";
 import { db } from "@/lib/firebase";
 import type { CentralJob } from "@/types/central-job";
 import type { ParsedResumeData } from "@/types/resume";
-import { useCentralJobs, type ScoredJob } from "@/hooks/use-central-jobs";
+import { useCentralJobs } from "@/hooks/use-central-jobs";
 import { FilterBar } from "@/components/jobs/filter-bar";
 import { TopMatches } from "@/components/jobs/top-matches";
 import { JobList } from "@/components/jobs/job-list";
 import { JobCardSkeleton } from "@/components/jobs/job-card-skeleton";
 import { EmptyState } from "@/components/jobs/empty-state";
-import { InfiniteScroll } from "@/components/jobs/infinite-scroll";
 import { ApplyDialog } from "@/components/applications/apply-dialog";
 import { AlertCircle } from "lucide-react";
 
@@ -53,11 +52,8 @@ export default function JobsPage() {
   const {
     jobs,
     loading,
-    loadingMore,
-    hasMore,
     error,
     filters,
-    loadMore,
     updateFilters,
     resetFilters,
   } = useCentralJobs(resume);
@@ -129,23 +125,14 @@ export default function JobsPage() {
       {!loading && jobs.length === 0 && <EmptyState />}
 
       {!loading && jobs.length > 0 && (
-        <InfiniteScroll onLoadMore={loadMore} hasMore={hasMore} loading={loadingMore}>
-          <div className="space-y-8">
-            <TopMatches jobs={topMatches} onApply={handleApply} />
-            <JobList
-              jobs={jobs}
-              savedJobIds={savedJobIds}
-              onSave={handleSave}
-              onApply={handleApply}
-            />
-          </div>
-        </InfiniteScroll>
-      )}
-
-      {/* Loading more indicator */}
-      {loadingMore && (
-        <div className="flex justify-center py-4">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <div className="space-y-8">
+          <TopMatches jobs={topMatches} onApply={handleApply} />
+          <JobList
+            jobs={jobs}
+            savedJobIds={savedJobIds}
+            onSave={handleSave}
+            onApply={handleApply}
+          />
         </div>
       )}
 

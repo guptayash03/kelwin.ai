@@ -7,6 +7,7 @@ from ..firebase_client import (
     get_application,
     get_user_profile,
     download_resume,
+    add_activity_log,
 )
 from ..browser.session import create_browser
 from ..ai.llm import get_llm
@@ -110,6 +111,7 @@ async def handle_submission(application_id: str, user_id: str):
     """Phase 2: Use browser-use Agent to fill and submit the application."""
     from browser_use import Agent
 
+    add_activity_log(application_id, "Starting form submission", "info", "applying")
     update_application_status(application_id, "applying")
 
     application = get_application(application_id)
@@ -124,18 +126,26 @@ async def handle_submission(application_id: str, user_id: str):
     # Generate AI answers for screening questions
     if screening_questions:
         update_application_status(application_id, "generating_ai_answers")
+        add_activity_log(
+            application_id,
+            f"Generating AI answers for {len(screening_questions)} screening questions",
+            "action",
+            "generating_ai_answers",
+        )
         from ..ai.screening import generate_screening_answers
 
         ai_provider = user_data.get("selectedAIProvider", "gemini")
         screening_questions = await generate_screening_answers(
             screening_questions, parsed_data, application, ai_provider
         )
+        add_activity_log(application_id, "AI answers generated successfully", "success", "generating_ai_answers")
         update_application_status(
             application_id, "applying", screeningQuestions=screening_questions
         )
 
     # Download resume
     update_application_status(application_id, "uploading_resume")
+    add_activity_log(application_id, "Preparing resume for upload", "action", "uploading_resume")
     resume_data = profile["resume"]
     storage_path = resume_data.get("storagePath", "")
     resume_path = None
@@ -152,6 +162,7 @@ async def handle_submission(application_id: str, user_id: str):
             tmp.write(resume_bytes)
             tmp.close()
             resume_path = tmp.name
+            add_activity_log(application_id, "Resume downloaded and ready", "success", "uploading_resume")
 
     # Build the submission task prompt
     task_prompt = _build_submission_task(
@@ -159,10 +170,13 @@ async def handle_submission(application_id: str, user_id: str):
     )
 
     update_application_status(application_id, "applying")
+    add_activity_log(application_id, f"Navigating to {job_url}", "action", "applying")
 
     llm = get_llm(user_id)
 
     task_with_url = f"Navigate to {job_url} and then:\n\n{task_prompt}"
+
+    add_activity_log(application_id, "Launching browser to fill application form", "action", "applying")
 
     try:
         async with create_browser() as browser:
@@ -171,8 +185,8 @@ async def handle_submission(application_id: str, user_id: str):
                 llm=llm,
                 browser=browser,
                 available_file_paths=[resume_path] if resume_path else None,
-                max_actions_per_step=10,
-                max_steps=30,
+                max_actions_per_step=15,
+                max_steps=50,
             )
 
             result = await agent.run()
@@ -180,8 +194,11 @@ async def handle_submission(application_id: str, user_id: str):
         if resume_path and os.path.exists(resume_path):
             os.unlink(resume_path)
 
+    add_activity_log(application_id, "Browser agent completed form filling", "info", "applying")
+
     raw_output = result.final_result()
     if not raw_output:
+        add_activity_log(application_id, "Agent failed to complete form submission", "error", "applying")
         raise Exception("Agent failed to complete form submission")
 
     try:
@@ -195,10 +212,12 @@ async def handle_submission(application_id: str, user_id: str):
 
     if not submission_result.get("success", False):
         reason = submission_result.get("reason", "Unknown submission failure")
+        add_activity_log(application_id, f"Submission failed: {reason}", "error", "applying")
         raise Exception(reason)
 
     # Mark as applied
     update_application_status(application_id, "submitting")
+    add_activity_log(application_id, "Submitting application", "action", "submitting")
 
     from firebase_admin import firestore as fs
 
@@ -211,6 +230,7 @@ async def handle_submission(application_id: str, user_id: str):
         currentTaskType=None,
     )
 
+    add_activity_log(application_id, "Application submitted successfully!", "success", "applied")
     logger.info(f"Application {application_id} submitted successfully")
 
     # Advance queue

@@ -3,12 +3,16 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   getDocs,
-  type QueryDocumentSnapshot,
+  collection,
+  query,
+  where,
+  orderBy,
   type DocumentData,
 } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type { CentralJob, JobFilters } from "@/types/central-job";
 import type { ParsedResumeData } from "@/types/resume";
-import { buildJobQuery, applyClientFilters } from "@/lib/jobs/query";
+import { applyClientFilters } from "@/lib/jobs/query";
 import { scoreCentralJob } from "@/lib/jobs/match-score-adapter";
 
 export interface ScoredJob {
@@ -17,26 +21,22 @@ export interface ScoredJob {
 }
 
 export function useCentralJobs(resume: ParsedResumeData | null) {
-  const [jobs, setJobs] = useState<ScoredJob[]>([]);
+  const [allJobs, setAllJobs] = useState<ScoredJob[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [filters, setFilters] = useState<JobFilters>({});
-  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchJobs = useCallback(
-    async (isLoadMore = false) => {
-      if (isLoadMore) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-        setLastDoc(null);
-      }
+  useEffect(() => {
+    async function fetchAllJobs() {
+      setLoading(true);
       setError(null);
 
       try {
-        const q = buildJobQuery(filters, isLoadMore ? lastDoc : null);
+        const q = query(
+          collection(db, "centralJobs"),
+          where("status", "==", "active"),
+          orderBy("lastSyncedAt", "desc")
+        );
         const snapshot = await getDocs(q);
 
         const rawResults = snapshot.docs.map((doc) => ({
@@ -44,45 +44,28 @@ export function useCentralJobs(resume: ParsedResumeData | null) {
           data: doc.data(),
         }));
 
-        const filtered = applyClientFilters(rawResults, filters);
-
-        const scored: ScoredJob[] = filtered.map(({ id, data }) => {
+        const scored: ScoredJob[] = rawResults.map(({ id, data }) => {
           const job: CentralJob = { id, ...data } as CentralJob;
           const matchScore = resume ? scoreCentralJob(job, resume) : 0;
           return { job, matchScore };
         });
 
-        if (isLoadMore) {
-          setJobs((prev) => [...prev, ...scored]);
-        } else {
-          setJobs(scored);
-        }
-
-        setHasMore(snapshot.docs.length >= 25);
-        if (snapshot.docs.length > 0) {
-          setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-        }
+        setAllJobs(scored);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load jobs";
         setError(message);
       } finally {
         setLoading(false);
-        setLoadingMore(false);
       }
-    },
-    [filters, lastDoc, resume]
-  );
-
-  useEffect(() => {
-    fetchJobs(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
-      fetchJobs(true);
     }
-  }, [loadingMore, hasMore, fetchJobs]);
+
+    fetchAllJobs();
+  }, [resume]);
+
+  const filteredJobs = applyClientFilters(
+    allJobs.map(({ job }) => ({ id: job.id, data: job as unknown as DocumentData })),
+    filters
+  ).map(({ id }) => allJobs.find((j) => j.job.id === id)!);
 
   const updateFilters = useCallback((newFilters: Partial<JobFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -93,13 +76,10 @@ export function useCentralJobs(resume: ParsedResumeData | null) {
   }, []);
 
   return {
-    jobs,
+    jobs: filteredJobs,
     loading,
-    loadingMore,
-    hasMore,
     error,
     filters,
-    loadMore,
     updateFilters,
     resetFilters,
   };
