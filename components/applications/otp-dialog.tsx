@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { Input } from "@/components/ui/input";
 import { ShieldCheck, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -63,21 +59,14 @@ export function OtpDialog({ applicationId, otpRequestedAt }: OtpDialogProps) {
             below to continue.
           </p>
 
-          <div className="mt-4 flex items-center gap-3">
-            <InputOTP
-              maxLength={6}
+          <div className="mt-4">
+            <Input
               value={otpCode}
-              onChange={setOtpCode}
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
+              onChange={(e) => setOtpCode(e.target.value.trim())}
+              placeholder="Enter verification code"
+              className="max-w-xs font-mono tracking-wider"
+              autoFocus
+            />
           </div>
 
           {error && (
