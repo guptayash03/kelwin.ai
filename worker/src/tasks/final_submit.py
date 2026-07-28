@@ -57,11 +57,15 @@ IMPORTANT:
 - Use the EXACT values provided — these were reviewed and confirmed by the user
 - Do NOT modify answers
 - If you see a CAPTCHA you cannot solve, report failure
+- If AFTER clicking Submit the portal asks for a verification code / confirmation code sent to an email, report it as needing verification
 
 After submission, return JSON (ONLY the JSON, no markdown):
 {{"success": true, "confirmation_message": "the confirmation text", "confirmation_url": "the URL after submission"}}
 
-If you cannot complete:
+If the portal requires a verification/confirmation code sent to email after clicking Submit:
+{{"success": false, "needs_verification": true, "verification_email": "the email address shown", "reason": "Verification code required"}}
+
+If you cannot complete for other reasons:
 {{"success": false, "reason": "why it failed"}}"""
 
 
@@ -136,6 +140,34 @@ async def handle_final_submit(application_id: str, user_id: str):
                 submission_result = {"success": False, "reason": f"Could not parse agent output: {raw_output[:100]}"}
 
             if not submission_result.get("success", False):
+                # Check if it needs email verification (post-submit OTP)
+                if submission_result.get("needs_verification"):
+                    verification_email = submission_result.get("verification_email", "")
+                    # Save cookies so we can resume after OTP
+                    cookies = []
+                    try:
+                        ctx = await browser.get_browser_context()
+                        cookies = await ctx.cookies()
+                    except Exception:
+                        pass
+
+                    add_activity_log(
+                        application_id,
+                        f"Portal requires verification code sent to {verification_email}",
+                        "warning",
+                        "submitting",
+                    )
+                    update_application_status(
+                        application_id,
+                        "waiting_for_otp",
+                        otpRequestedAt=__import__("firebase_admin").firestore.SERVER_TIMESTAMP,
+                        sessionCookies=cookies,
+                        currentTaskType=None,
+                    )
+                    _send_otp_notification(application_id, user_id, verification_email)
+                    logger.info(f"Application {application_id}: waiting for verification code")
+                    return
+
                 reason = submission_result.get("reason", "Unknown submission failure")
                 add_activity_log(application_id, f"Submission failed: {reason}", "error", "submitting")
                 raise Exception(reason)
@@ -168,3 +200,110 @@ async def handle_final_submit(application_id: str, user_id: str):
     finally:
         if resume_path and os.path.exists(resume_path):
             os.unlink(resume_path)
+
+
+async def handle_verification_code(application_id: str, user_id: str, otp_code: str):
+    """Handle verification code entry after portal sends confirmation email."""
+    from browser_use import Agent
+
+    add_activity_log(application_id, f"Entering verification code", "action", "submitting")
+    update_application_status(application_id, "submitting")
+
+    application = get_application(application_id)
+    job_url = application["jobUrl"]
+    saved_cookies = application.get("sessionCookies", [])
+
+    llm = get_llm(user_id)
+
+    task = f"""Navigate to {job_url}.
+You need to enter a verification/confirmation code on this page.
+The code is: {otp_code}
+
+Find the verification code input field, enter the code, and submit it.
+If the page has already moved past the verification step, look for a confirmation message.
+
+Return JSON only:
+{{"success": true, "confirmation_message": "the confirmation text"}}
+
+On failure:
+{{"success": false, "reason": "explanation"}}"""
+
+    try:
+        async with create_browser() as browser:
+            if saved_cookies:
+                context = await browser.get_browser_context()
+                await context.add_cookies(saved_cookies)
+
+            agent = Agent(
+                task=task,
+                llm=llm,
+                browser=browser,
+                max_actions_per_step=5,
+                max_failures=3,
+                step_timeout=60,
+                extend_system_message=EXTEND_SYSTEM,
+            )
+
+            raw_output = await run_agent_safely(
+                agent=agent,
+                browser=browser,
+                max_steps=15,
+                wall_timeout=180,
+            )
+
+            try:
+                clean = raw_output.strip()
+                if clean.startswith("```"):
+                    clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
+                result = json.loads(clean)
+            except json.JSONDecodeError:
+                result = {"success": False, "reason": f"Could not parse: {raw_output[:100]}"}
+
+            if not result.get("success", False):
+                reason = result.get("reason", "Verification failed")
+                add_activity_log(application_id, f"Verification failed: {reason}", "error", "submitting")
+                raise Exception(reason)
+
+        from firebase_admin import firestore as fs_admin
+
+        update_application_status(
+            application_id,
+            "applied",
+            confirmationMessage=result.get("confirmation_message"),
+            submittedAt=fs_admin.SERVER_TIMESTAMP,
+            currentTaskType=None,
+            sessionCookies=None,
+        )
+        add_activity_log(application_id, "Application submitted successfully!", "success", "applied")
+
+        from .submission import _advance_queue
+        _advance_queue(user_id)
+
+    except Exception as e:
+        error_msg = str(e)[:200]
+        logger.error(f"Application {application_id} verification failed: {error_msg}")
+        add_activity_log(application_id, f"Verification failed: {error_msg}", "error", "submitting")
+        update_application_status(application_id, "failed", failureReason=error_msg)
+
+
+def _send_otp_notification(application_id: str, user_id: str, verification_email: str):
+    """Notify user that a verification code was sent to their email."""
+    try:
+        from ..firebase_client import get_db
+
+        db = get_db()
+        app_data = get_application(application_id)
+        user_doc = db.collection("users").document(user_id).get()
+        user_email = user_doc.to_dict().get("email", "") if user_doc.exists else ""
+        if not user_email:
+            return
+
+        db.collection("mail").add({
+            "to": user_email,
+            "message": {
+                "subject": f"Verification code needed — {app_data.get('jobTitle', '')} at {app_data.get('company', '')}",
+                "html": f"<p>The job portal sent a verification code to <strong>{verification_email}</strong> to confirm your application for <strong>{app_data.get('jobTitle', '')}</strong> at <strong>{app_data.get('company', '')}</strong>.</p><p>Check your email for the code and enter it here:</p><p><a href='https://kelwin.ai/dashboard/applications/{application_id}'>Enter Verification Code</a></p>",
+            },
+        })
+    except Exception as e:
+        logger.warning(f"Failed to send OTP notification: {e}")

@@ -62,13 +62,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine which task to dispatch based on where the OTP was requested
+    // If the app already has filledFieldValues, it means the form was filled and
+    // the OTP is a post-submit verification code → route to final_submit
+    const isPostSubmitVerification = !!appData.filledFieldValues;
+    const taskType = isPostSubmitVerification ? "final_submit" : "login";
+
     await adminDb.collection("applications").doc(applicationId).update({
-      status: "applying",
-      currentTaskType: "login",
+      status: isPostSubmitVerification ? "submitting" : "applying",
+      currentTaskType: taskType,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    await createApplicationTask(applicationId, uid, "login", {
+    await createApplicationTask(applicationId, uid, taskType, {
       otpCode,
     });
 

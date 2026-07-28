@@ -182,6 +182,7 @@ async def task_final_submit(request: Request):
     body = await request.json()
     application_id = body.get("applicationId")
     user_id = body.get("userId")
+    otp_code = body.get("otpCode")
 
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
@@ -191,9 +192,12 @@ async def task_final_submit(request: Request):
     logger.info(f"Starting final submit for application {application_id}")
 
     try:
-        from .tasks.final_submit import handle_final_submit
+        from .tasks.final_submit import handle_final_submit, handle_verification_code
 
-        await handle_final_submit(application_id, user_id)
+        if otp_code:
+            await handle_verification_code(application_id, user_id, otp_code)
+        else:
+            await handle_final_submit(application_id, user_id)
         return {"status": "completed"}
     except Exception as e:
         logger.error(f"Final submit failed for {application_id}: {e}")
