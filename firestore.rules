@@ -63,6 +63,24 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Daily usage: users can read their own usage docs
+    match /dailyUsage/{docId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Subscriptions: users can read their own subscription records
+    match /subscriptions/{subId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Billing history: users can read their own payment records
+    match /billingHistory/{paymentId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
     // Mail queue for Firebase Trigger Email extension
     match /mail/{mailId} {
       allow read, write: if false;

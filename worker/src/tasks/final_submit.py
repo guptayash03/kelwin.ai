@@ -174,6 +174,7 @@ async def handle_final_submit(application_id: str, user_id: str):
 
         # Success — update status (browser closed cleanly above)
         from firebase_admin import firestore as fs_admin
+        from ..firebase_client import increment_daily_usage
 
         update_application_status(
             application_id,
@@ -185,6 +186,7 @@ async def handle_final_submit(application_id: str, user_id: str):
             sessionCookies=None,
         )
 
+        increment_daily_usage(user_id)
         add_activity_log(application_id, "Application submitted successfully!", "success", "applied")
         logger.info(f"Application {application_id} submitted successfully via final_submit")
 
@@ -265,6 +267,7 @@ On failure:
                 raise Exception(reason)
 
         from firebase_admin import firestore as fs_admin
+        from ..firebase_client import increment_daily_usage
 
         update_application_status(
             application_id,
@@ -274,6 +277,8 @@ On failure:
             currentTaskType=None,
             sessionCookies=None,
         )
+
+        increment_daily_usage(user_id)
         add_activity_log(application_id, "Application submitted successfully!", "success", "applied")
 
         from .submission import _advance_queue

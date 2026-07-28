@@ -4,6 +4,7 @@ import { decodeJwt } from "jose";
 import { createApplicationTask } from "@/lib/cloud-tasks";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { checkSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,22 @@ export async function POST(request: NextRequest) {
       { error: "Missing required fields: jobId, jobUrl, jobTitle, company, platform" },
       { status: 400 }
     );
+  }
+
+  try {
+    const sub = await checkSubscription(uid);
+    if (!sub.canApply) {
+      return NextResponse.json(
+        {
+          error: "daily_limit_reached",
+          usage: sub.dailyUsage,
+          limit: sub.dailyLimit,
+        },
+        { status: 429 }
+      );
+    }
+  } catch (err) {
+    console.error("Subscription check failed:", err);
   }
 
   try {
