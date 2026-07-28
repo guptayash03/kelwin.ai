@@ -74,14 +74,18 @@ def get_user_profile(user_id: str) -> dict:
 
 
 def add_activity_log(application_id: str, message: str, level: str = "info", step: str = None):
-    db = get_db()
-    log_data = {
-        "level": level,
-        "message": message,
-        "step": step,
-        "timestamp": firestore.SERVER_TIMESTAMP,
-    }
-    db.collection("applications").document(application_id).collection("logs").add(log_data)
+    import logging
+    try:
+        db = get_db()
+        log_data = {
+            "level": level,
+            "message": message,
+            "step": step,
+            "timestamp": firestore.SERVER_TIMESTAMP,
+        }
+        db.collection("applications").document(application_id).collection("logs").add(log_data)
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to write activity log for {application_id}: {e}")
 
 
 def download_resume(user_id: str, storage_path: str) -> bytes:

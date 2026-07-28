@@ -4,15 +4,18 @@ export type ApplicationStatus =
   | "analyzing_application"
   | "comparing_profile"
   | "missing_profile_info"
+  | "waiting_for_credentials"
+  | "waiting_for_otp"
   | "ready_to_apply"
   | "applying"
   | "uploading_resume"
   | "generating_ai_answers"
+  | "waiting_for_review"
   | "submitting"
   | "applied"
   | "failed";
 
-export type TaskType = "analysis" | "submission";
+export type TaskType = "analysis" | "login" | "submission" | "final_submit";
 
 export type QueueStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -63,6 +66,11 @@ export interface ApplicationDocument {
   confirmationUrl: string | null;
   failureReason: string | null;
   retryCount: number;
+  detectedPortal: string | null;
+  filledFieldValues: Record<string, string> | null;
+  otpRequestedAt: unknown | null;
+  otpPageUrl: string | null;
+  sessionCookies: unknown[] | null;
   submittedAt: unknown | null;
   createdAt: unknown;
   updatedAt: unknown;
@@ -91,6 +99,13 @@ export const ACTIVE_STATUSES: ApplicationStatus[] = [
   "uploading_resume",
   "generating_ai_answers",
   "submitting",
+];
+
+export const WAITING_STATUSES: ApplicationStatus[] = [
+  "missing_profile_info",
+  "waiting_for_credentials",
+  "waiting_for_otp",
+  "waiting_for_review",
 ];
 
 export const TERMINAL_STATUSES: ApplicationStatus[] = [

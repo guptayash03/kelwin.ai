@@ -57,6 +57,17 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Portal credentials: read-only for users (API routes handle encryption via Admin SDK)
+    match /users/{userId}/portalCredentials/{portalId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Mail queue for Firebase Trigger Email extension
+    match /mail/{mailId} {
+      allow read, write: if false;
+    }
+
     // Sync runs: internal only
     match /syncRuns/{runId} {
       allow read, write: if false;

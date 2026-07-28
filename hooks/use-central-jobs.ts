@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   getDocs,
   collection,
   query,
   where,
   orderBy,
+  limit,
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -14,6 +15,8 @@ import type { CentralJob, JobFilters } from "@/types/central-job";
 import type { ParsedResumeData } from "@/types/resume";
 import { applyClientFilters } from "@/lib/jobs/query";
 import { scoreCentralJob } from "@/lib/jobs/match-score-adapter";
+
+const MAX_JOBS = 500;
 
 export interface ScoredJob {
   job: CentralJob;
@@ -27,6 +30,8 @@ export function useCentralJobs(resume: ParsedResumeData | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchAllJobs() {
       setLoading(true);
       setError(null);
@@ -35,37 +40,41 @@ export function useCentralJobs(resume: ParsedResumeData | null) {
         const q = query(
           collection(db, "centralJobs"),
           where("status", "==", "active"),
-          orderBy("lastSyncedAt", "desc")
+          where("_countries", "array-contains", "india"),
+          orderBy("lastSyncedAt", "desc"),
+          limit(MAX_JOBS)
         );
         const snapshot = await getDocs(q);
+        if (cancelled) return;
 
-        const rawResults = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          data: doc.data(),
-        }));
-
-        const scored: ScoredJob[] = rawResults.map(({ id, data }) => {
-          const job: CentralJob = { id, ...data } as CentralJob;
+        const scored: ScoredJob[] = snapshot.docs.map((doc) => {
+          const job: CentralJob = { id: doc.id, ...doc.data() } as CentralJob;
           const matchScore = resume ? scoreCentralJob(job, resume) : 0;
           return { job, matchScore };
         });
 
         setAllJobs(scored);
       } catch (err) {
+        if (cancelled) return;
         const message = err instanceof Error ? err.message : "Failed to load jobs";
         setError(message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchAllJobs();
+    return () => { cancelled = true; };
   }, [resume]);
 
-  const filteredJobs = applyClientFilters(
-    allJobs.map(({ job }) => ({ id: job.id, data: job as unknown as DocumentData })),
-    filters
-  ).map(({ id }) => allJobs.find((j) => j.job.id === id)!);
+  const filteredJobs = useMemo(() => {
+    const jobMap = new Map(allJobs.map((s) => [s.job.id, s]));
+    const filtered = applyClientFilters(
+      allJobs.map(({ job }) => ({ id: job.id, data: job as unknown as DocumentData })),
+      filters
+    );
+    return filtered.map(({ id }) => jobMap.get(id)!);
+  }, [allJobs, filters]);
 
   const updateFilters = useCallback((newFilters: Partial<JobFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));

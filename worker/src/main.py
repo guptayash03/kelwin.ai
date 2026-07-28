@@ -42,12 +42,27 @@ async def task_analysis(request: Request):
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
 
-    from .firebase_client import get_application, update_application_status, add_activity_log
+    from .firebase_client import get_db, update_application_status, add_activity_log
+    from google.cloud.firestore_v1 import transactional
 
-    # Guard: skip if already terminal
-    app_doc = get_application(application_id)
-    if app_doc.get("status") in ("failed", "applied"):
-        logger.info(f"Skipping analysis for {application_id}: already {app_doc['status']}")
+    db = get_db()
+    app_ref = db.collection("applications").document(application_id)
+
+    @transactional
+    def claim_for_analysis(transaction):
+        snapshot = app_ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return "not_found"
+        data = snapshot.to_dict()
+        if data.get("status") in ("failed", "applied", "analyzing"):
+            return data.get("status")
+        transaction.update(app_ref, {"status": "analyzing", "currentTaskType": "analysis"})
+        return None
+
+    transaction = db.transaction()
+    existing_status = claim_for_analysis(transaction)
+    if existing_status:
+        logger.info(f"Skipping analysis for {application_id}: already {existing_status}")
         return {"status": "skipped"}
 
     logger.info(f"Starting analysis for application {application_id}")
@@ -70,6 +85,40 @@ async def task_analysis(request: Request):
         return {"status": "failed", "error": str(e)}
 
 
+@app.post("/tasks/login")
+async def task_login(request: Request):
+    if not verify_oidc_token(request):
+        raise HTTPException(status_code=401, detail="Invalid OIDC token")
+
+    body = await request.json()
+    application_id = body.get("applicationId")
+    user_id = body.get("userId")
+    otp_code = body.get("otpCode")
+
+    if not application_id or not user_id:
+        raise HTTPException(status_code=400, detail="Missing applicationId or userId")
+
+    from .firebase_client import update_application_status, add_activity_log
+
+    logger.info(f"Starting login for application {application_id}")
+
+    try:
+        from .tasks.login import handle_login
+
+        await handle_login(application_id, user_id, otp_code)
+        return {"status": "completed"}
+    except Exception as e:
+        logger.error(f"Login failed for {application_id}: {e}")
+        add_activity_log(application_id, f"Login failed: {e}", "error")
+        update_application_status(
+            application_id,
+            "failed",
+            failureReason=str(e),
+            currentTaskType="login",
+        )
+        return {"status": "failed", "error": str(e)}
+
+
 @app.post("/tasks/submission")
 async def task_submission(request: Request):
     if not verify_oidc_token(request):
@@ -82,12 +131,27 @@ async def task_submission(request: Request):
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
 
-    from .firebase_client import get_application, update_application_status, add_activity_log
+    from .firebase_client import get_db, update_application_status, add_activity_log
+    from google.cloud.firestore_v1 import transactional
 
-    # Guard: skip if already terminal
-    app_doc = get_application(application_id)
-    if app_doc.get("status") in ("failed", "applied"):
-        logger.info(f"Skipping submission for {application_id}: already {app_doc['status']}")
+    db = get_db()
+    app_ref = db.collection("applications").document(application_id)
+
+    @transactional
+    def claim_for_submission(transaction):
+        snapshot = app_ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return "not_found"
+        data = snapshot.to_dict()
+        if data.get("status") in ("failed", "applied", "applying"):
+            return data.get("status")
+        transaction.update(app_ref, {"status": "applying", "currentTaskType": "submission"})
+        return None
+
+    transaction = db.transaction()
+    existing_status = claim_for_submission(transaction)
+    if existing_status:
+        logger.info(f"Skipping submission for {application_id}: already {existing_status}")
         return {"status": "skipped"}
 
     logger.info(f"Starting submission for application {application_id}")
@@ -107,4 +171,37 @@ async def task_submission(request: Request):
             currentTaskType="submission",
         )
         # Return 200 so Cloud Tasks does NOT retry
+        return {"status": "failed", "error": str(e)}
+
+
+@app.post("/tasks/final_submit")
+async def task_final_submit(request: Request):
+    if not verify_oidc_token(request):
+        raise HTTPException(status_code=401, detail="Invalid OIDC token")
+
+    body = await request.json()
+    application_id = body.get("applicationId")
+    user_id = body.get("userId")
+
+    if not application_id or not user_id:
+        raise HTTPException(status_code=400, detail="Missing applicationId or userId")
+
+    from .firebase_client import update_application_status, add_activity_log
+
+    logger.info(f"Starting final submit for application {application_id}")
+
+    try:
+        from .tasks.final_submit import handle_final_submit
+
+        await handle_final_submit(application_id, user_id)
+        return {"status": "completed"}
+    except Exception as e:
+        logger.error(f"Final submit failed for {application_id}: {e}")
+        add_activity_log(application_id, f"Final submission failed: {e}", "error")
+        update_application_status(
+            application_id,
+            "failed",
+            failureReason=str(e),
+            currentTaskType="final_submit",
+        )
         return {"status": "failed", "error": str(e)}

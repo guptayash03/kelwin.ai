@@ -8,6 +8,9 @@ import { useApplicationLogs } from "@/hooks/use-application-logs";
 import { ApplicationTimeline } from "@/components/applications/application-timeline";
 import { ActivityLog } from "@/components/applications/activity-log";
 import { MissingFieldsDialog } from "@/components/applications/missing-fields-dialog";
+import { CredentialsNeededBanner } from "@/components/applications/credentials-needed-banner";
+import { OtpDialog } from "@/components/applications/otp-dialog";
+import { ReviewPanel } from "@/components/applications/review-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -170,6 +173,27 @@ export default function ApplicationDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Action Banners */}
+      {application.status === "waiting_for_credentials" && (
+        <CredentialsNeededBanner
+          applicationId={application.id!}
+          portal={application.detectedPortal}
+        />
+      )}
+      {application.status === "waiting_for_otp" && (
+        <OtpDialog
+          applicationId={application.id!}
+          otpRequestedAt={application.otpRequestedAt}
+        />
+      )}
+      {application.status === "waiting_for_review" && (
+        <ReviewPanel
+          applicationId={application.id!}
+          filledFields={application.filledFieldValues}
+          screeningQuestions={application.screeningQuestions}
+        />
+      )}
 
       {/* Progress + Activity Log side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">

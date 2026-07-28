@@ -9,6 +9,7 @@ from ..firebase_client import (
 from ..browser.session import create_browser
 from ..browser.platform_detect import detect_platform
 from ..ai.llm import get_llm
+from ._agent_runner import run_agent_safely, AgentTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,9 @@ Return your findings as a JSON object with this EXACT structure (output ONLY the
 Screening questions are typically about: work authorization, visa sponsorship, relocation, salary expectations, years of experience, start date, why you want to work here, cover letters, or any open-ended question.
 
 Regular fields are: name, email, phone, LinkedIn, GitHub, portfolio/website, location, resume upload."""
+
+EXTEND_SYSTEM = """CRITICAL: If an action does not produce the expected result, try a DIFFERENT approach.
+NEVER repeat the exact same action more than twice. If stuck, return a failure JSON immediately."""
 
 
 def compare_profile_to_fields(detected_fields: list, parsed_data: dict) -> list:
@@ -125,23 +129,33 @@ async def handle_analysis(application_id: str, user_id: str):
 
     add_activity_log(application_id, "Launching browser to analyze form fields", "action", "analyzing_application")
 
-    async with create_browser() as browser:
-        agent = Agent(
-            task=task_with_url,
-            llm=llm,
-            browser=browser,
-            max_actions_per_step=10,
-            max_steps=20,
-        )
+    try:
+        async with create_browser() as browser:
+            agent = Agent(
+                task=task_with_url,
+                llm=llm,
+                browser=browser,
+                max_actions_per_step=3,
+                max_failures=3,
+                step_timeout=60,
+                enable_planning=True,
+                extend_system_message=EXTEND_SYSTEM,
+            )
 
-        result = await agent.run()
+            raw_output = await run_agent_safely(
+                agent=agent,
+                browser=browser,
+                max_steps=15,
+                wall_timeout=270,
+            )
+    except (AgentTimeoutError, Exception) as e:
+        error_msg = str(e)[:200]
+        logger.error(f"Application {application_id} analysis failed: {error_msg}")
+        add_activity_log(application_id, f"Analysis failed: {error_msg}", "error", "analyzing_application")
+        update_application_status(application_id, "failed", failureReason=error_msg)
+        return
 
     add_activity_log(application_id, "Browser agent completed form analysis", "info", "analyzing_application")
-
-    raw_output = result.final_result()
-    if not raw_output:
-        add_activity_log(application_id, "Agent failed to extract form fields", "error", "analyzing_application")
-        raise Exception("Agent failed to extract form fields")
 
     try:
         clean = raw_output.strip()
@@ -151,7 +165,8 @@ async def handle_analysis(application_id: str, user_id: str):
     except json.JSONDecodeError as e:
         add_activity_log(application_id, f"Failed to parse form structure: {e}", "error", "analyzing_application")
         logger.error(f"Failed to parse agent output: {raw_output[:500]}")
-        raise Exception(f"Failed to parse form analysis: {e}")
+        update_application_status(application_id, "failed", failureReason=f"Failed to parse form analysis: {e}")
+        return
 
     detected_fields = extracted.get("detected_fields", [])
     screening_questions = extracted.get("screening_questions", [])
@@ -182,6 +197,7 @@ async def handle_analysis(application_id: str, user_id: str):
             application_id,
             "missing_profile_info",
             platform=platform,
+            detectedPortal=platform,
             detectedFields=detected_fields,
             screeningQuestions=screening_questions,
             missingFields=missing_fields,
@@ -190,23 +206,63 @@ async def handle_analysis(application_id: str, user_id: str):
         logger.info(f"Application {application_id}: missing fields: {missing_fields}")
     else:
         add_activity_log(application_id, "All required fields matched to profile", "success", "comparing_profile")
-        update_application_status(
-            application_id,
-            "ready_to_apply",
-            platform=platform,
-            detectedFields=detected_fields,
-            screeningQuestions=screening_questions,
-            missingFields=[],
-            currentTaskType="submission",
-        )
-        add_activity_log(application_id, "Ready to apply — starting submission phase", "info", "ready_to_apply")
-        logger.info(f"Application {application_id}: ready to apply, enqueueing submission")
-        _enqueue_submission(application_id, user_id)
+
+        from .login import requires_login, get_portal_credentials
+
+        if requires_login(platform):
+            creds = get_portal_credentials(user_id, platform)
+            if not creds or not creds.get("connected"):
+                add_activity_log(
+                    application_id,
+                    f"Portal {platform} requires login — credentials not found",
+                    "warning",
+                    "comparing_profile",
+                )
+                update_application_status(
+                    application_id,
+                    "waiting_for_credentials",
+                    platform=platform,
+                    detectedPortal=platform,
+                    detectedFields=detected_fields,
+                    screeningQuestions=screening_questions,
+                    missingFields=[],
+                    currentTaskType=None,
+                )
+                logger.info(f"Application {application_id}: waiting for {platform} credentials")
+                return
+
+            add_activity_log(application_id, f"Credentials found for {platform} — proceeding to login", "info", "comparing_profile")
+            update_application_status(
+                application_id,
+                "ready_to_apply",
+                platform=platform,
+                detectedPortal=platform,
+                detectedFields=detected_fields,
+                screeningQuestions=screening_questions,
+                missingFields=[],
+                currentTaskType="login",
+            )
+            _enqueue_login(application_id, user_id)
+        else:
+            update_application_status(
+                application_id,
+                "ready_to_apply",
+                platform=platform,
+                detectedPortal=platform,
+                detectedFields=detected_fields,
+                screeningQuestions=screening_questions,
+                missingFields=[],
+                currentTaskType="submission",
+            )
+            add_activity_log(application_id, "Ready to apply — starting submission phase", "info", "ready_to_apply")
+            logger.info(f"Application {application_id}: ready to apply, enqueueing submission")
+            _enqueue_submission(application_id, user_id)
 
 
 def _enqueue_submission(application_id: str, user_id: str):
     """Enqueue Phase 2 (submission) Cloud Task."""
     from google.cloud import tasks_v2
+    from google.protobuf import duration_pb2
     from ..config import config
 
     client = tasks_v2.CloudTasksClient()
@@ -216,6 +272,7 @@ def _enqueue_submission(application_id: str, user_id: str):
     payload = json.dumps({"applicationId": application_id, "userId": user_id}).encode()
 
     task = {
+        "dispatch_deadline": duration_pb2.Duration(seconds=1800),
         "http_request": {
             "http_method": tasks_v2.HttpMethod.POST,
             "url": f"{worker_url}/tasks/submission",
@@ -225,6 +282,34 @@ def _enqueue_submission(application_id: str, user_id: str):
                 "service_account_email": config.WORKER_SERVICE_ACCOUNT,
                 "audience": worker_url,
             },
-        }
+        },
+    }
+    client.create_task(request={"parent": parent, "task": task})
+
+
+def _enqueue_login(application_id: str, user_id: str):
+    """Enqueue login task for portals requiring authentication."""
+    from google.cloud import tasks_v2
+    from google.protobuf import duration_pb2
+    from ..config import config
+
+    client = tasks_v2.CloudTasksClient()
+    parent = client.queue_path(config.GCP_PROJECT_ID, config.GCP_LOCATION, config.GCP_QUEUE_NAME)
+
+    worker_url = config.WORKER_URL
+    payload = json.dumps({"applicationId": application_id, "userId": user_id}).encode()
+
+    task = {
+        "dispatch_deadline": duration_pb2.Duration(seconds=1800),
+        "http_request": {
+            "http_method": tasks_v2.HttpMethod.POST,
+            "url": f"{worker_url}/tasks/login",
+            "headers": {"Content-Type": "application/json"},
+            "body": payload,
+            "oidc_token": {
+                "service_account_email": config.WORKER_SERVICE_ACCOUNT,
+                "audience": worker_url,
+            },
+        },
     }
     client.create_task(request={"parent": parent, "task": task})
