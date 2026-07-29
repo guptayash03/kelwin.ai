@@ -61,6 +61,8 @@ async def task_analysis(request: Request):
 
     transaction = db.transaction()
     existing_status = claim_for_analysis(transaction)
+    if existing_status == "not_found":
+        raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
     if existing_status:
         logger.info(f"Skipping analysis for {application_id}: already {existing_status}")
         return {"status": "skipped"}
@@ -110,13 +112,15 @@ async def task_login(request: Request):
         if not snapshot.exists:
             return "not_found"
         data = snapshot.to_dict()
-        if data.get("status") in ("failed", "applied", "applying"):
+        if data.get("status") in ("failed", "applied"):
             return data.get("status")
         transaction.update(app_ref, {"status": "applying", "currentTaskType": "login"})
         return None
 
     transaction = db.transaction()
     existing_status = claim_for_login(transaction)
+    if existing_status == "not_found":
+        raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
     if existing_status:
         logger.info(f"Skipping login for {application_id}: already {existing_status}")
         return {"status": "skipped"}
@@ -164,13 +168,15 @@ async def task_submission(request: Request):
         if not snapshot.exists:
             return "not_found"
         data = snapshot.to_dict()
-        if data.get("status") in ("failed", "applied", "applying"):
+        if data.get("status") in ("failed", "applied"):
             return data.get("status")
         transaction.update(app_ref, {"status": "applying", "currentTaskType": "submission"})
         return None
 
     transaction = db.transaction()
     existing_status = claim_for_submission(transaction)
+    if existing_status == "not_found":
+        raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
     if existing_status:
         logger.info(f"Skipping submission for {application_id}: already {existing_status}")
         return {"status": "skipped"}
@@ -220,13 +226,15 @@ async def task_final_submit(request: Request):
         if not snapshot.exists:
             return "not_found"
         data = snapshot.to_dict()
-        if data.get("status") in ("failed", "applied", "submitting"):
+        if data.get("status") in ("failed", "applied"):
             return data.get("status")
         transaction.update(app_ref, {"status": "submitting", "currentTaskType": "final_submit"})
         return None
 
     transaction = db.transaction()
     existing_status = claim_for_final_submit(transaction)
+    if existing_status == "not_found":
+        raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
     if existing_status:
         logger.info(f"Skipping final submit for {application_id}: already {existing_status}")
         return {"status": "skipped"}

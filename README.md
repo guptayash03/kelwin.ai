@@ -30,7 +30,7 @@ Each step runs in an isolated Playwright browser session on Cloud Run (4 CPU / 4
 
 ## Architecture
 
-```
+```text
 Browser (React)                  Next.js API Routes              Cloud Tasks             Worker (Cloud Run)
      |                                  |                            |                         |
      |-- Apply to Job ---------------->  |                            |                         |
@@ -55,7 +55,7 @@ Browser (React)                  Next.js API Routes              Cloud Tasks    
 
 ## Application Pipeline
 
-```
+```text
 create -> analyzing -> waiting_for_review -> submitting -> applied
               |              |                     |
               v              v                     v
@@ -98,13 +98,15 @@ uvicorn src.main:app --reload --port 8080
 
 ## Deployment
 
-Both services deploy to Cloud Run from source:
+Both services deploy to Cloud Run. The platform requires build-time args for client-side env vars:
 
 ```bash
-# Platform
-gcloud run deploy platform --source . --region asia-southeast1
+# Platform (uses cloudbuild.yaml for NEXT_PUBLIC_* build args)
+gcloud builds submit --config=cloudbuild.yaml
 
 # Worker
 gcloud run deploy kelwin-worker --source ./worker --region asia-south1 \
   --cpu 4 --memory 4Gi --timeout 900
 ```
+
+`NEXT_PUBLIC_FIREBASE_*` and `NEXT_PUBLIC_RAZORPAY_KEY_ID` are baked at build time via Docker build args. Runtime secrets are set via `--set-env-vars` in the deploy step.

@@ -72,7 +72,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await createApplicationTask(applicationId, uid, "final_submit");
+    try {
+      await createApplicationTask(applicationId, uid, "final_submit");
+    } catch (taskErr) {
+      await appRef.update({
+        status: "waiting_for_review",
+        currentTaskType: null,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      const message = taskErr instanceof Error ? taskErr.message : String(taskErr);
+      return NextResponse.json(
+        { error: `Failed to enqueue task: ${message}` },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

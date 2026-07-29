@@ -11,7 +11,7 @@ const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 export async function POST(request: NextRequest) {
   if (!WEBHOOK_SECRET) {
     console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid signature" }, { status: 500 });
   }
 
   const signature = request.headers.get("x-razorpay-signature") || "";
