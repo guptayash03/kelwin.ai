@@ -210,8 +210,9 @@ async def handle_submission(application_id: str, user_id: str):
                     clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
                 fill_result = json.loads(clean)
             except json.JSONDecodeError:
-                logger.warning(f"Could not parse fill result: {raw_output[:500]}")
-                fill_result = {"success": True, "filled_values": {}}
+                logger.error(f"Could not parse fill result: {raw_output[:500]}")
+                add_activity_log(application_id, "Form filling produced unparseable output", "error", "applying")
+                raise Exception("Agent output could not be parsed as JSON")
 
             if not fill_result.get("success", False):
                 reason = fill_result.get("reason", "Unknown form filling failure")

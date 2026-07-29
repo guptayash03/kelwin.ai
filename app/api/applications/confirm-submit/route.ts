@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { decodeJwt } from "jose";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { createApplicationTask } from "@/lib/cloud-tasks";
 
@@ -15,9 +14,8 @@ export async function POST(request: NextRequest) {
 
   let uid: string;
   try {
-    const payload = decodeJwt(session);
-    uid = payload.sub as string;
-    if (!uid) throw new Error("No uid in token");
+    const decoded = await adminAuth.verifyIdToken(session);
+    uid = decoded.uid;
   } catch {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
@@ -38,46 +36,41 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const appDoc = await adminDb
-      .collection("applications")
-      .doc(applicationId)
-      .get();
+    const appRef = adminDb.collection("applications").doc(applicationId);
 
-    if (!appDoc.exists) {
+    const transitioned = await adminDb.runTransaction(async (tx) => {
+      const appDoc = await tx.get(appRef);
+
+      if (!appDoc.exists) return { error: "Application not found", status: 404 };
+
+      const appData = appDoc.data()!;
+      if (appData.userId !== uid) return { error: "Forbidden", status: 403 };
+
+      if (appData.status !== "waiting_for_review") {
+        return { error: `Cannot confirm: status is ${appData.status}`, status: 409 };
+      }
+
+      const updateData: Record<string, unknown> = {
+        status: "submitting",
+        currentTaskType: "final_submit",
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      if (editedFields && Object.keys(editedFields).length > 0) {
+        const existing = appData.filledFieldValues || {};
+        updateData.filledFieldValues = { ...existing, ...editedFields };
+      }
+
+      tx.update(appRef, updateData);
+      return { success: true };
+    });
+
+    if ("error" in transitioned) {
       return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 }
+        { error: transitioned.error },
+        { status: transitioned.status }
       );
     }
-
-    const appData = appDoc.data()!;
-    if (appData.userId !== uid) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    if (appData.status !== "waiting_for_review") {
-      return NextResponse.json(
-        { error: `Cannot confirm: status is ${appData.status}` },
-        { status: 409 }
-      );
-    }
-
-    const updateData: Record<string, unknown> = {
-      status: "submitting",
-      currentTaskType: "final_submit",
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-
-    // Merge user edits into filledFieldValues
-    if (editedFields && Object.keys(editedFields).length > 0) {
-      const existing = appData.filledFieldValues || {};
-      updateData.filledFieldValues = { ...existing, ...editedFields };
-    }
-
-    await adminDb
-      .collection("applications")
-      .doc(applicationId)
-      .update(updateData);
 
     await createApplicationTask(applicationId, uid, "final_submit");
 

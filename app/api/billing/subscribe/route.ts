@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { decodeJwt } from "jose";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 import { createSubscription } from "@/lib/razorpay";
 import { getRazorpayPlanId } from "@/config/plans";
 
@@ -15,9 +14,8 @@ export async function POST(request: NextRequest) {
 
   let uid: string;
   try {
-    const payload = decodeJwt(session);
-    uid = payload.sub as string;
-    if (!uid) throw new Error("No uid in token");
+    const decoded = await adminAuth.verifyIdToken(session);
+    uid = decoded.uid;
   } catch {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
