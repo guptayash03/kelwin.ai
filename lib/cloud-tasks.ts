@@ -68,11 +68,12 @@ async function getAccessToken(): Promise<string> {
 export async function createApplicationTask(
   applicationId: string,
   userId: string,
-  taskType: TaskType
+  taskType: TaskType,
+  extraPayload?: Record<string, string>
 ): Promise<string> {
   const accessToken = await getAccessToken();
   const parent = `projects/${PROJECT_ID}/locations/${LOCATION}/queues/${QUEUE_NAME}`;
-  const payload = JSON.stringify({ applicationId, userId });
+  const payload = JSON.stringify({ applicationId, userId, ...extraPayload });
 
   const res = await fetch(
     `https://cloudtasks.googleapis.com/v2/${parent}/tasks`,
@@ -84,6 +85,7 @@ export async function createApplicationTask(
       },
       body: JSON.stringify({
         task: {
+          dispatchDeadline: "1800s",
           httpRequest: {
             httpMethod: "POST",
             url: `${WORKER_URL}/tasks/${taskType}`,

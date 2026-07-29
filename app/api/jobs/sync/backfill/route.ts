@@ -22,36 +22,22 @@ export async function POST(request: Request) {
   const startTime = Date.now();
   let totalWritten = 0;
   let skippedExisting = 0;
-  let deletedCount = 0;
 
   try {
-    // Wipe existing centralJobs collection
-    const existingDocs = await adminDb.collection("centralJobs").listDocuments();
-    const DELETE_BATCH = 500;
-    for (let i = 0; i < existingDocs.length; i += DELETE_BATCH) {
-      const chunk = existingDocs.slice(i, i + DELETE_BATCH);
-      const batch = adminDb.batch();
-      for (const doc of chunk) {
-        batch.delete(doc);
-        deletedCount++;
-      }
-      await batch.commit();
-    }
-
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
     const [atsJobs, jbJobs] = await Promise.all([
       fetchActiveAtsJobs({
         ...DEFAULT_ATS_PARAMS,
-        time_frame: "6m",
-        date_created_gte: thirtyDaysAgo,
+        time_frame: "24h",
+        date_created_gte: oneDayAgo,
       }),
       fetchActiveJbJobs({
         ...DEFAULT_JB_PARAMS,
-        time_frame: "6m",
-        date_created_gte: thirtyDaysAgo,
+        time_frame: "24h",
+        date_created_gte: oneDayAgo,
       }),
     ]);
 
@@ -88,7 +74,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      deletedExisting: deletedCount,
       totalFetched: allJobs.length,
       totalWritten,
       skippedExisting,

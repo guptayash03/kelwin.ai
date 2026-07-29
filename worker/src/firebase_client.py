@@ -74,17 +74,50 @@ def get_user_profile(user_id: str) -> dict:
 
 
 def add_activity_log(application_id: str, message: str, level: str = "info", step: str = None):
-    db = get_db()
-    log_data = {
-        "level": level,
-        "message": message,
-        "step": step,
-        "timestamp": firestore.SERVER_TIMESTAMP,
-    }
-    db.collection("applications").document(application_id).collection("logs").add(log_data)
+    import logging
+    try:
+        db = get_db()
+        log_data = {
+            "level": level,
+            "message": message,
+            "step": step,
+            "timestamp": firestore.SERVER_TIMESTAMP,
+        }
+        db.collection("applications").document(application_id).collection("logs").add(log_data)
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to write activity log for {application_id}: {e}")
 
 
 def download_resume(user_id: str, storage_path: str) -> bytes:
     bucket = get_bucket()
     blob = bucket.blob(storage_path)
     return blob.download_as_bytes()
+
+
+def increment_daily_usage(user_id: str):
+    from datetime import date
+
+    db = get_db()
+    today = date.today().isoformat()
+    doc_id = f"{user_id}_{today}"
+    doc_ref = db.collection("dailyUsage").document(doc_id)
+
+    doc = doc_ref.get()
+    if doc.exists:
+        doc_ref.update({
+            "aiApplyCount": firestore.Increment(1),
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })
+    else:
+        user_doc = db.collection("users").document(user_id).get()
+        current_plan = user_doc.to_dict().get("currentPlan", "pro") if user_doc.exists else "pro"
+        limit = 25 if current_plan == "pro" else None
+
+        doc_ref.set({
+            "userId": user_id,
+            "date": today,
+            "aiApplyCount": 1,
+            "plan": current_plan,
+            "limit": limit,
+            "updatedAt": firestore.SERVER_TIMESTAMP,
+        })

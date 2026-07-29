@@ -7,9 +7,12 @@ import {
   ScanLine,
   UserCheck,
   AlertTriangle,
+  KeyRound,
+  ShieldCheck,
   Rocket,
   Upload,
   Sparkles,
+  Eye,
   Send,
   CheckCircle2,
   XCircle,
@@ -26,15 +29,25 @@ const TIMELINE_STEPS: TimelineStep[] = [
   { status: "detecting_platform", label: "Detecting Platform", icon: <Search className="h-4 w-4" /> },
   { status: "analyzing_application", label: "Analyzing Application", icon: <ScanLine className="h-4 w-4" /> },
   { status: "comparing_profile", label: "Comparing Profile", icon: <UserCheck className="h-4 w-4" /> },
+  { status: "waiting_for_credentials", label: "Credentials Needed", icon: <KeyRound className="h-4 w-4" /> },
   { status: "ready_to_apply", label: "Ready to Apply", icon: <Rocket className="h-4 w-4" /> },
   { status: "applying", label: "Applying", icon: <Rocket className="h-4 w-4" /> },
+  { status: "waiting_for_otp", label: "OTP Required", icon: <ShieldCheck className="h-4 w-4" /> },
   { status: "uploading_resume", label: "Uploading Resume", icon: <Upload className="h-4 w-4" /> },
   { status: "generating_ai_answers", label: "Generating AI Answers", icon: <Sparkles className="h-4 w-4" /> },
+  { status: "waiting_for_review", label: "Review & Confirm", icon: <Eye className="h-4 w-4" /> },
   { status: "submitting", label: "Submitting", icon: <Send className="h-4 w-4" /> },
   { status: "applied", label: "Applied", icon: <CheckCircle2 className="h-4 w-4" /> },
 ];
 
 const STATUS_ORDER: ApplicationStatus[] = TIMELINE_STEPS.map((s) => s.status);
+
+const WAITING_STATUS_SET: Set<ApplicationStatus> = new Set([
+  "missing_profile_info",
+  "waiting_for_credentials",
+  "waiting_for_otp",
+  "waiting_for_review",
+]);
 
 function getStepState(
   stepStatus: ApplicationStatus,
@@ -52,6 +65,13 @@ function getStepState(
     const currentIndex = STATUS_ORDER.indexOf(stepStatus);
     const compIdx = STATUS_ORDER.indexOf("comparing_profile");
     if (currentIndex < compIdx) return "completed";
+    return "upcoming";
+  }
+  if (WAITING_STATUS_SET.has(currentStatus)) {
+    if (stepStatus === currentStatus) return "warning";
+    const stepIndex = STATUS_ORDER.indexOf(stepStatus);
+    const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+    if (stepIndex < currentIndex) return "completed";
     return "upcoming";
   }
 

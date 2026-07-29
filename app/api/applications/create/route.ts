@@ -4,6 +4,7 @@ import { decodeJwt } from "jose";
 import { createApplicationTask } from "@/lib/cloud-tasks";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { checkSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const sub = await checkSubscription(uid);
+    if (!sub.canApply) {
+      return NextResponse.json(
+        {
+          error: "daily_limit_reached",
+          usage: sub.dailyUsage,
+          limit: sub.dailyLimit,
+        },
+        { status: 429 }
+      );
+    }
+  } catch (err) {
+    console.error("Subscription check failed:", err);
+  }
+
+  try {
     const docRef = await adminDb.collection("applications").add({
       userId: uid,
       jobId,
@@ -64,6 +81,11 @@ export async function POST(request: NextRequest) {
       confirmationUrl: null,
       failureReason: null,
       retryCount: 0,
+      detectedPortal: null,
+      filledFieldValues: null,
+      otpRequestedAt: null,
+      otpPageUrl: null,
+      sessionCookies: null,
       submittedAt: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),

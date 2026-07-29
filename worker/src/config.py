@@ -23,6 +23,8 @@ class Config:
     AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
+    PORTAL_ENCRYPTION_KEY = os.environ.get("PORTAL_ENCRYPTION_KEY", "")
+
     BROWSER_USE_HEADLESS = os.environ.get("BROWSER_USE_HEADLESS", "true").lower() == "true"
 
 

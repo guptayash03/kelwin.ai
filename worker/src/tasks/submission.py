@@ -3,6 +3,7 @@ import logging
 import tempfile
 import os
 from ..firebase_client import (
+    get_db,
     update_application_status,
     get_application,
     get_user_profile,
@@ -11,8 +12,12 @@ from ..firebase_client import (
 )
 from ..browser.session import create_browser
 from ..ai.llm import get_llm
+from ._agent_runner import run_agent_safely, AgentTimeoutError
 
 logger = logging.getLogger(__name__)
+
+EXTEND_SYSTEM = """CRITICAL: If an action does not produce the expected result, try a DIFFERENT approach.
+NEVER repeat the exact same action more than twice. If stuck, return a failure JSON immediately."""
 
 
 def _build_submission_task(
@@ -75,36 +80,27 @@ APPLICANT PROFILE:
 
     resume_instruction = ""
     if resume_path:
-        resume_instruction = f"\nRESUME FILE TO UPLOAD: {resume_path}\nUpload this file when you see a resume/CV file upload field.\n"
+        resume_instruction = f"\nRESUME FILE: {resume_path}\nUpload this when you see a resume/CV file upload field.\n"
 
-    return f"""You are filling out a job application form. Complete ALL fields and submit the application.
+    return f"""Fill this job application form. Do NOT click Submit.
 
 {profile_info}
 {field_instructions}
 {screening_instructions}
 {resume_instruction}
+RULES:
+- If you see an "Apply" button, click it to reach the form
+- Fill ALL required fields using the profile data above
+- For dropdowns, pick the closest match
+- Upload the resume if there's a file upload field
+- If you see a CAPTCHA, return failure
+- DO NOT click the final Submit/Apply button
 
-INSTRUCTIONS:
-1. You are already on the application page. If you see an "Apply" button to get to the form, click it first.
-2. Fill in ALL form fields using the applicant's profile data above.
-3. For screening questions, use the provided answers above. If no answer is provided, give a brief professional answer based on the profile.
-4. For dropdown/select fields, choose the most appropriate option.
-5. Upload the resume file if there's a file upload field.
-6. After ALL fields are filled, click the Submit/Apply button.
-7. Wait for the confirmation page to load.
-8. Report the confirmation message or URL you see after submission.
+When done, return ONLY this JSON (no markdown):
+{{"success": true, "filled_values": {{"Field Label": "value entered"}}}}
 
-IMPORTANT:
-- Fill fields carefully and accurately
-- Do NOT skip required fields
-- Do NOT submit until all required fields are filled
-- If you see a CAPTCHA or verification you cannot solve, report it as a failure
-
-After submission, return a JSON response (ONLY the JSON, no markdown):
-{{"success": true, "confirmation_message": "the confirmation text you see", "confirmation_url": "the current URL after submission"}}
-
-If you cannot complete the submission, return:
-{{"success": false, "reason": "why it failed"}}"""
+On failure return:
+{{"success": false, "reason": "explanation"}}"""
 
 
 async def handle_submission(application_id: str, user_id: str):
@@ -180,61 +176,96 @@ async def handle_submission(application_id: str, user_id: str):
 
     try:
         async with create_browser() as browser:
+            # Restore session cookies if available
+            application_data = get_application(application_id)
+            saved_cookies = application_data.get("sessionCookies", [])
+            if saved_cookies:
+                context = await browser.get_browser_context()
+                await context.add_cookies(saved_cookies)
+
             agent = Agent(
                 task=task_with_url,
                 llm=llm,
                 browser=browser,
                 available_file_paths=[resume_path] if resume_path else None,
-                max_actions_per_step=15,
-                max_steps=50,
+                max_actions_per_step=5,
+                max_failures=3,
+                step_timeout=90,
+                enable_planning=True,
+                extend_system_message=EXTEND_SYSTEM,
             )
 
-            result = await agent.run()
+            raw_output = await run_agent_safely(
+                agent=agent,
+                browser=browser,
+                max_steps=25,
+                wall_timeout=540,
+            )
+
+            add_activity_log(application_id, "Browser agent completed form filling", "info", "applying")
+
+            try:
+                clean = raw_output.strip()
+                if clean.startswith("```"):
+                    clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
+                fill_result = json.loads(clean)
+            except json.JSONDecodeError:
+                logger.warning(f"Could not parse fill result: {raw_output[:500]}")
+                fill_result = {"success": True, "filled_values": {}}
+
+            if not fill_result.get("success", False):
+                reason = fill_result.get("reason", "Unknown form filling failure")
+                add_activity_log(application_id, f"Form filling failed: {reason}", "error", "applying")
+                raise Exception(reason)
+
+            # Save filled values and capture cookies while browser is still open
+            filled_values = fill_result.get("filled_values", {})
+            cookies = []
+            try:
+                ctx = await browser.get_browser_context()
+                cookies = await ctx.cookies()
+            except Exception:
+                pass
+
+            add_activity_log(
+                application_id,
+                f"Form filled with {len(filled_values)} fields — awaiting your review",
+                "success",
+                "applying",
+            )
+
+            update_application_status(
+                application_id,
+                "waiting_for_review",
+                filledFieldValues=filled_values,
+                sessionCookies=cookies,
+                currentTaskType=None,
+            )
+
+            add_activity_log(
+                application_id,
+                "Please review the filled answers and confirm submission",
+                "info",
+                "waiting_for_review",
+            )
+            logger.info(f"Application {application_id}: waiting for user review")
+
+    except Exception as e:
+        error_msg = str(e)[:200]
+        logger.error(f"Application {application_id} submission failed: {error_msg}")
+        add_activity_log(application_id, f"Application failed: {error_msg}", "error", "applying")
+        update_application_status(application_id, "failed", failureReason=error_msg)
     finally:
         if resume_path and os.path.exists(resume_path):
             os.unlink(resume_path)
 
-    add_activity_log(application_id, "Browser agent completed form filling", "info", "applying")
-
-    raw_output = result.final_result()
-    if not raw_output:
-        add_activity_log(application_id, "Agent failed to complete form submission", "error", "applying")
-        raise Exception("Agent failed to complete form submission")
-
+    # Send notification (only runs if status is waiting_for_review)
     try:
-        clean = raw_output.strip()
-        if clean.startswith("```"):
-            clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
-        submission_result = json.loads(clean)
-    except json.JSONDecodeError:
-        logger.warning(f"Could not parse submission result: {raw_output[:500]}")
-        submission_result = {"success": True, "confirmation_message": raw_output[:200]}
-
-    if not submission_result.get("success", False):
-        reason = submission_result.get("reason", "Unknown submission failure")
-        add_activity_log(application_id, f"Submission failed: {reason}", "error", "applying")
-        raise Exception(reason)
-
-    # Mark as applied
-    update_application_status(application_id, "submitting")
-    add_activity_log(application_id, "Submitting application", "action", "submitting")
-
-    from firebase_admin import firestore as fs
-
-    update_application_status(
-        application_id,
-        "applied",
-        confirmationMessage=submission_result.get("confirmation_message"),
-        confirmationUrl=submission_result.get("confirmation_url"),
-        submittedAt=fs.SERVER_TIMESTAMP,
-        currentTaskType=None,
-    )
-
-    add_activity_log(application_id, "Application submitted successfully!", "success", "applied")
-    logger.info(f"Application {application_id} submitted successfully")
-
-    # Advance queue
-    _advance_queue(user_id)
+        app_check = get_application(application_id)
+        if app_check.get("status") == "waiting_for_review":
+            _send_review_notification(application_id, user_id)
+    except Exception:
+        pass
 
 
 def _advance_queue(user_id: str):
@@ -283,3 +314,24 @@ def _advance_queue(user_id: str):
         }
     }
     client.create_task(request={"parent": parent, "task": task})
+
+
+def _send_review_notification(application_id: str, user_id: str):
+    """Write a notification for the user to review their application before submission."""
+    try:
+        db = get_db()
+        app_data = get_application(application_id)
+        user_doc = db.collection("users").document(user_id).get()
+        user_email = user_doc.to_dict().get("email", "") if user_doc.exists else ""
+        if not user_email:
+            return
+
+        db.collection("mail").add({
+            "to": user_email,
+            "message": {
+                "subject": f"Review your application — {app_data.get('jobTitle', '')} at {app_data.get('company', '')}",
+                "html": f"<p>Your application for <strong>{app_data.get('jobTitle', '')}</strong> at <strong>{app_data.get('company', '')}</strong> has been filled out and is ready for review.</p><p><a href='https://kelwin.ai/dashboard/applications/{application_id}'>Review & Submit</a></p>",
+            },
+        })
+    except Exception as e:
+        logger.warning(f"Failed to send review notification: {e}")

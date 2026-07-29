@@ -21,7 +21,12 @@ export function useApplicationLogs(applicationId: string | null) {
   const [logs, setLogs] = useState<ApplicationLog[]>([]);
 
   useEffect(() => {
-    if (!applicationId) return;
+    if (!applicationId) {
+      setLogs([]);
+      return;
+    }
+
+    setLogs([]);
 
     const q = query(
       collection(db, "applications", applicationId, "logs"),

@@ -51,6 +51,21 @@ export function applyClientFilters(
   filters: JobFilters
 ): Array<{ data: DocumentData; id: string }> {
   return jobs.filter(({ data }) => {
+    if (filters.experienceLevel) {
+      const level = (data._experienceLevel as string) || "";
+      if (level !== filters.experienceLevel.toLowerCase()) return false;
+    }
+
+    if (filters.workArrangement) {
+      const arrangement = (data._workArrangement as string) || "";
+      if (arrangement !== filters.workArrangement.toLowerCase()) return false;
+    }
+
+    if (filters.source) {
+      const source = (data._source as string) || "";
+      if (source !== filters.source.toLowerCase()) return false;
+    }
+
     if (filters.employmentType) {
       const types = (data._employmentTypes as string[]) || [];
       if (!types.includes(filters.employmentType.toLowerCase())) return false;
