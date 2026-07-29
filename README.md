@@ -3,6 +3,7 @@
 AI-powered job application agent that autonomously fills and submits job applications on your behalf. Upload your resume, connect your portal credentials, and let the browser-use agent handle the rest.
 
 Live at [kelwin.app](https://kelwin.app)
+Dashboard at [Platform.kelwin.app](https://platform.kelwin.app/dashboard)
 
 ## Tech Stack
 
