@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { decodeJwt } from "jose";
+import { adminAuth } from "@/lib/firebase-admin";
 import { checkSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,8 @@ export async function GET(request: NextRequest) {
 
   let uid: string;
   try {
-    const payload = decodeJwt(session);
-    uid = payload.sub as string;
-    if (!uid) throw new Error("No uid in token");
+    const decoded = await adminAuth.verifyIdToken(session);
+    uid = decoded.uid;
   } catch {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }

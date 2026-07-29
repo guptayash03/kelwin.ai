@@ -5,6 +5,7 @@ import {
   applicationDefault,
   type App,
 } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { readFileSync } from "fs";
 import { resolve } from "path";
@@ -37,3 +38,4 @@ if (getApps().length === 0) {
 }
 
 export const adminDb: Firestore = getFirestore(app);
+export const adminAuth: Auth = getAuth(app);

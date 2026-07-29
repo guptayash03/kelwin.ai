@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kelwin AI
 
-## Getting Started
+AI-powered job application agent that autonomously fills and submits job applications on your behalf. Upload your resume, connect your portal credentials, and let the browser-use agent handle the rest.
 
-First, run the development server:
+Live at [kelwin.app](https://kelwin.app)
+Dashboard at [Platform.kelwin.app](https://platform.kelwin.app/dashboard)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16, React 19, Tailwind CSS, shadcn/ui, Framer Motion |
+| Backend | Next.js API Routes, Firebase Admin SDK, Cloud Tasks |
+| Worker | Python (FastAPI), browser-use, Playwright, Gemini 3.6 Flash |
+| Database | Cloud Firestore |
+| Auth | Firebase Authentication |
+| Payments | Razorpay Subscriptions |
+| Infra | Google Cloud Run (2 services), Artifact Registry |
+
+## AI Agent
+
+The worker runs a multi-step browser automation agent powered by [browser-use](https://github.com/browser-use/browser-use) and Gemini 3.6 Flash:
+
+1. **Analysis** - Navigates to the job URL, detects the application form, and extracts all fields (inputs, dropdowns, screening questions) as structured JSON
+2. **Login** - Authenticates into job portals (Greenhouse, Lever, Workday, etc.) using encrypted stored credentials
+3. **Form Fill** - Maps resume data to form fields, answers screening questions, uploads resume, and fills the complete application
+4. **Final Submit** - Submits the form, handles OTP/verification codes, and confirms successful submission
+
+Each step runs in an isolated Playwright browser session on Cloud Run (4 CPU / 4 GB / 900s timeout). Firestore transactions prevent duplicate task execution on retries.
+
+## Architecture
+
+```
+Browser (React)                  Next.js API Routes              Cloud Tasks             Worker (Cloud Run)
+     |                                  |                            |                         |
+     |-- Apply to Job ---------------->  |                            |                         |
+     |                                  |-- Enqueue task ----------> |                         |
+     |                                  |                            |-- POST /tasks/analysis ->|
+     |                                  |                            |                         |-- Launch browser
+     |                                  |                            |                         |-- Extract fields
+     |                                  |                            |                         |-- Write to Firestore
+     |<-- Real-time Firestore snapshot --|                            |                         |
+     |                                  |                            |                         |
+     |-- Confirm/Edit Fields --------->  |                            |                         |
+     |                                  |-- Enqueue final_submit --> |                         |
+     |                                  |                            |-- POST /tasks/submit --->|
+     |                                  |                            |                         |-- Fill & submit form
+     |                                  |                            |                         |-- Increment usage
+     |<-- Status: applied --------------|                            |                         |
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Platform service** (`asia-southeast1`) - Next.js app serving the dashboard, API routes, and static pages.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Worker service** (`asia-south1`) - Python FastAPI running browser-use agents with Playwright in headless Chromium.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Application Pipeline
 
-## Learn More
+```
+create -> analyzing -> waiting_for_review -> submitting -> applied
+              |              |                     |
+              v              v                     v
+       waiting_for_credentials            waiting_for_otp
+              |                                   |
+              v                                   v
+          applying                           submitting
+```
 
-To learn more about Next.js, take a look at the following resources:
+1. User clicks **Apply** on a job listing
+2. Platform validates subscription/usage limits, creates application doc, enqueues analysis task
+3. Worker analyzes the page, extracts form fields, stores results in Firestore
+4. User reviews pre-filled answers in the dashboard, edits if needed, confirms
+5. Worker fills the form in a real browser, submits, handles any verification codes
+6. Daily usage counter increments on successful submission
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Subscription & Billing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Plan | Price | Daily Limit |
+|------|-------|-------------|
+| Pro | Free | 25 AI applies/day |
+| Unlimited | INR 199/month | Unlimited |
 
-## Deploy on Vercel
+Usage resets daily via date-keyed Firestore documents (`{userId}_{YYYY-MM-DD}`) - no cron required. Razorpay webhooks manage subscription lifecycle.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Local Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Platform
+npm install
+cp .env.example .env.local  # fill in values
+npm run dev
+
+# Worker
+cd worker
+pip install -r requirements.txt
+playwright install chromium
+uvicorn src.main:app --reload --port 8080
+```
+
+## Deployment
+
+Both services deploy to Cloud Run from source:
+
+```bash
+# Platform
+gcloud run deploy platform --source . --region asia-southeast1
+
+# Worker
+gcloud run deploy kelwin-worker --source ./worker --region asia-south1 \
+  --cpu 4 --memory 4Gi --timeout 900
+```

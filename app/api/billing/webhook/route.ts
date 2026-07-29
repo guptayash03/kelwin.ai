@@ -6,9 +6,14 @@ import { verifyWebhookSignature } from "@/lib/razorpay";
 
 export const dynamic = "force-dynamic";
 
-const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
+const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
+  if (!WEBHOOK_SECRET) {
+    console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
   const signature = request.headers.get("x-razorpay-signature") || "";
   const rawBody = await request.text();
 
@@ -219,6 +224,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     console.error(`Error processing webhook ${eventType}:`, err);
+    return NextResponse.json(
+      { error: `Failed to process ${eventType}` },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ received: true });

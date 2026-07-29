@@ -73,12 +73,16 @@ export function verifyWebhookSignature(
   signature: string,
   secret: string
 ): boolean {
+  if (!secret || !signature) return false;
+
   const expectedSignature = crypto
     .createHmac("sha256", secret)
     .update(body)
     .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(expectedSignature),
-    Buffer.from(signature)
-  );
+
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expectedSignature);
+  if (sigBuf.length !== expectedBuf.length) return false;
+
+  return crypto.timingSafeEqual(expectedBuf, sigBuf);
 }

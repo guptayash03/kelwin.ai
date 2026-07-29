@@ -98,7 +98,28 @@ async def task_login(request: Request):
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
 
-    from .firebase_client import update_application_status, add_activity_log
+    from .firebase_client import get_db, update_application_status, add_activity_log
+    from google.cloud.firestore_v1 import transactional
+
+    db = get_db()
+    app_ref = db.collection("applications").document(application_id)
+
+    @transactional
+    def claim_for_login(transaction):
+        snapshot = app_ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return "not_found"
+        data = snapshot.to_dict()
+        if data.get("status") in ("failed", "applied", "applying"):
+            return data.get("status")
+        transaction.update(app_ref, {"status": "applying", "currentTaskType": "login"})
+        return None
+
+    transaction = db.transaction()
+    existing_status = claim_for_login(transaction)
+    if existing_status:
+        logger.info(f"Skipping login for {application_id}: already {existing_status}")
+        return {"status": "skipped"}
 
     logger.info(f"Starting login for application {application_id}")
 
@@ -187,7 +208,28 @@ async def task_final_submit(request: Request):
     if not application_id or not user_id:
         raise HTTPException(status_code=400, detail="Missing applicationId or userId")
 
-    from .firebase_client import update_application_status, add_activity_log
+    from .firebase_client import get_db, update_application_status, add_activity_log
+    from google.cloud.firestore_v1 import transactional
+
+    db = get_db()
+    app_ref = db.collection("applications").document(application_id)
+
+    @transactional
+    def claim_for_final_submit(transaction):
+        snapshot = app_ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return "not_found"
+        data = snapshot.to_dict()
+        if data.get("status") in ("failed", "applied", "submitting"):
+            return data.get("status")
+        transaction.update(app_ref, {"status": "submitting", "currentTaskType": "final_submit"})
+        return None
+
+    transaction = db.transaction()
+    existing_status = claim_for_final_submit(transaction)
+    if existing_status:
+        logger.info(f"Skipping final submit for {application_id}: already {existing_status}")
+        return {"status": "skipped"}
 
     logger.info(f"Starting final submit for application {application_id}")
 
